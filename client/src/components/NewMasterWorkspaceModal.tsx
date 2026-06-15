@@ -44,32 +44,36 @@ export function NewMasterWorkspaceModal({ onClose, onCreate }: NewMasterWorkspac
           <code>BlenderWorkspace</code> 子目录。
         </p>
 
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <label>
-            工作区名称
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="选择文件夹后可自动填入"
+        <form className="modal-form" onSubmit={(e) => void handleSubmit(e)}>
+          <div className="modal-form-section">
+            <label className="form-field-label">
+              工作区名称
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="选择文件夹后可自动填入"
+                required
+                autoFocus
+              />
+            </label>
+          </div>
+
+          <div className="modal-form-section">
+            <PathPickerField
+              label="根目录"
+              value={rootPath}
+              onChange={handleRootPathChange}
+              pickTitle="选择总工作区根目录"
               required
-              autoFocus
+              hint={
+                <span className="field-hint">
+                  可在对话框中新建文件夹；选定后将在此目录下创建标准子结构。
+                </span>
+              }
             />
-          </label>
+          </div>
 
-          <PathPickerField
-            label="根目录"
-            value={rootPath}
-            onChange={handleRootPathChange}
-            pickTitle="选择总工作区根目录"
-            required
-            hint={
-              <span className="field-hint">
-                可在对话框中新建文件夹；选定后将在此目录下创建标准子结构。
-              </span>
-            }
-          />
-
-          <div className="name-preview">
+          <div className="modal-form-section name-preview">
             <div className="name-preview-title">将创建结构</div>
             <div className="name-preview-row">
               <code>{rootPath || "..."}\\ConceptWorkspace\\</code>

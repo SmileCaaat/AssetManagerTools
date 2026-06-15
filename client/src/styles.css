@@ -79,6 +79,14 @@ code {
   white-space: nowrap;
 }
 
+.brand-icon-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
 .top-bar-divider {
   width: 1px;
   height: 24px;
@@ -195,6 +203,48 @@ code {
 
 .dropdown-menu button:hover {
   background: var(--accent-soft);
+}
+
+.external-links-menu {
+  min-width: min(320px, 80vw);
+}
+
+.external-links-menu-header {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 10px 8px;
+}
+
+.external-links-group:not(:last-child) {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.external-links-group-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 4px 10px 2px;
+}
+
+.external-link-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.external-link-name {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.external-link-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.3;
 }
 
 .path-item {
@@ -1332,7 +1382,11 @@ code {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
+}
+
+.modal-workspace {
+  width: min(560px, calc(100vw - 32px));
 }
 
 .modal h2 {
@@ -1340,21 +1394,39 @@ code {
 }
 
 .modal-desc {
-  margin: 0 0 16px;
+  margin: 0 0 20px;
   color: var(--text-muted);
   font-size: 0.9rem;
+  line-height: 1.5;
 }
 
-.modal form {
+.modal form,
+.modal-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
-.modal label {
+.modal-form-section {
+  margin-bottom: 20px;
+}
+
+.modal-form-section-compact {
+  margin-bottom: 16px;
+}
+
+.form-field-label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.modal label:not(.checkbox-label) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   font-size: 0.85rem;
   color: var(--text-muted);
 }
@@ -1375,47 +1447,98 @@ code {
 
 .field-hint {
   display: block;
-  margin-top: 4px;
-  font-size: 0.75rem;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--text-muted);
+}
+
+.path-picker-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .path-picker-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: stretch;
 }
 
 .path-picker-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .path-picker-label {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.path-picker-note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--text-muted);
 }
 
-.path-picker-actions {
+.path-picker-path {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  padding: 0 12px;
+  min-height: 42px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
 }
 
 .path-picker-value {
   display: block;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  font-size: 0.75rem;
+  width: 100%;
+  font-size: 0.78rem;
+  color: #b8c4d9;
   word-break: break-all;
+  white-space: normal;
+  line-height: 1.4;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .path-picker-placeholder {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
+}
+
+.btn-pick-folder {
+  flex-shrink: 0;
+  min-width: 120px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(96, 165, 250, 0.55);
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-pick-folder:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.32);
+  border-color: #60a5fa;
+  color: #dbeafe;
+}
+
+.btn-pick-folder:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .path-picker-row .path-picker-input {
@@ -1513,8 +1636,10 @@ code {
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .modal-actions button {

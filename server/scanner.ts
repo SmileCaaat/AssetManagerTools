@@ -63,9 +63,12 @@ export async function discoverUnlinkedProjects(workspace: MasterWorkspace): Prom
 export async function suggestProjectLinks(workspace: MasterWorkspace): Promise<ProjectLink[]> {
   const conceptDirs = await listDirectories(getConceptRoot(workspace));
   const blenderDirs = await listDirectories(path.join(getBlenderRoot(workspace), "projects"));
+  const linkedConcept = new Set(workspace.projects.map((p) => p.conceptPath));
+  const linkedBlender = new Set(workspace.projects.map((p) => p.blenderPath));
   const suggestions: ProjectLink[] = [];
 
   for (const conceptName of conceptDirs) {
+    if (linkedConcept.has(conceptName)) continue;
     let best: { name: string; score: number } | null = null;
     for (const blenderName of blenderDirs) {
       const score = scoreMatch(conceptName, blenderName);
@@ -73,7 +76,7 @@ export async function suggestProjectLinks(workspace: MasterWorkspace): Promise<P
         best = { name: blenderName, score };
       }
     }
-    if (best && best.score >= 80) {
+    if (best && best.score >= 80 && !linkedBlender.has(`projects/${best.name}`)) {
       suggestions.push({
         id: normalizeId(conceptName) || normalizeId(best.name),
         displayName: best.name,

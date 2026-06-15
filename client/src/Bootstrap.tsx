@@ -9,14 +9,16 @@ export function useWorkspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = async () => {
+  const reload = async (): Promise<WorkspaceResponse> => {
     setLoading(true);
     setError(null);
     try {
       const result = await fetchWorkspace();
       setData(result);
+      return result;
     } catch (err) {
       setError(String(err));
+      throw err;
     } finally {
       setLoading(false);
     }

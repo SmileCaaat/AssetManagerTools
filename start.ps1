@@ -3,6 +3,14 @@ $ErrorActionPreference = "Stop"
 
 Set-Location $PSScriptRoot
 
+if (-not (Test-Path "AssetManager.lnk")) {
+    try {
+        & "$PSScriptRoot\create-launcher.ps1" -Silent | Out-Null
+    } catch {
+        # Non-fatal: continue with start.bat if shortcut creation fails
+    }
+}
+
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Host "[错误] 未找到 Node.js，请先安装: https://nodejs.org/" -ForegroundColor Red
     Read-Host "按 Enter 退出"

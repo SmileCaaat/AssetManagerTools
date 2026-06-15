@@ -57,74 +57,80 @@ export function OpenMasterWorkspaceModal({ onClose, onOpen }: OpenMasterWorkspac
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-workspace" onClick={(e) => e.stopPropagation()}>
         <h2>打开工作区</h2>
         <p className="modal-desc">
           浏览选择磁盘上已有的工作区目录，注册到列表中，可与其它工作区并存。
         </p>
 
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <label>
-            工作区名称
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="选择文件夹后可自动填入"
-              required
-              autoFocus
-            />
-          </label>
+        <form className="modal-form" onSubmit={(e) => void handleSubmit(e)}>
+          <div className="modal-form-section">
+            <label className="form-field-label">
+              工作区名称
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="选择文件夹后可自动填入"
+                required
+                autoFocus
+              />
+            </label>
+          </div>
 
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={dispersed}
-              onChange={(e) => setDispersed(e.target.checked)}
-            />
-            分散路径（概念与生产不在同一根目录）
-          </label>
+          <div className="modal-form-section modal-form-section-compact">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={dispersed}
+                onChange={(e) => setDispersed(e.target.checked)}
+              />
+              <span>分散路径（概念与生产不在同一根目录）</span>
+            </label>
+          </div>
 
-          {!dispersed ? (
-            <PathPickerField
-              label="总工作区根目录"
-              value={rootPath}
-              onChange={(next) => {
-                setRootPath(next);
-                maybeFillName(next);
-              }}
-              pickTitle="选择已有工作区根目录"
-              required
-              hint={
-                <span className="field-hint">
-                  需包含 <code>ConceptWorkspace</code> 与/或 <code>BlenderWorkspace</code>
-                </span>
-              }
-            />
-          ) : (
-            <>
+          <div className="modal-form-section">
+            {!dispersed ? (
               <PathPickerField
-                label="概念路径 (ConceptWorkspace)"
-                value={conceptRoot}
+                label="总工作区根目录"
+                value={rootPath}
                 onChange={(next) => {
-                  setConceptRoot(next);
+                  setRootPath(next);
                   maybeFillName(next);
                 }}
-                pickTitle="选择概念工作区文件夹"
+                pickTitle="选择已有工作区根目录"
+                required
+                hint={
+                  <span className="field-hint">
+                    需包含 <code>ConceptWorkspace</code> 与/或 <code>BlenderWorkspace</code>
+                  </span>
+                }
               />
-              <PathPickerField
-                label="生产路径 (BlenderWorkspace)"
-                value={blenderRoot}
-                onChange={(next) => {
-                  setBlenderRoot(next);
-                  if (!name.trim() && !conceptRoot.trim()) {
+            ) : (
+              <div className="path-picker-stack">
+                <PathPickerField
+                  label="概念路径 (ConceptWorkspace)"
+                  value={conceptRoot}
+                  onChange={(next) => {
+                    setConceptRoot(next);
                     maybeFillName(next);
-                  }
-                }}
-                pickTitle="选择生产工作区文件夹"
-              />
-              <p className="modal-hint">概念与生产路径至少选择一项。</p>
-            </>
-          )}
+                  }}
+                  pickTitle="选择概念工作区文件夹"
+                />
+                <PathPickerField
+                  label="生产路径 (BlenderWorkspace)"
+                  value={blenderRoot}
+                  onChange={(next) => {
+                    setBlenderRoot(next);
+                    if (!name.trim() && !conceptRoot.trim()) {
+                      maybeFillName(next);
+                    }
+                  }}
+                  pickTitle="选择生产工作区文件夹"
+                />
+                <p className="modal-hint">概念与生产路径至少选择一项。</p>
+              </div>
+            )}
+          </div>
 
           {error && <p className="form-error">{error}</p>}
 

@@ -80,4 +80,5 @@ export interface WorkspaceResponse {
   active: ActiveWorkspace;
   unlinked: { conceptOnly: string[]; blenderOnly: string[] };
   suggestions: ProjectLink[];
+  autoLinked?: ProjectLink[];
 }

@@ -12,6 +12,7 @@ import {
   updateActiveWorkspace,
 } from "./config.js";
 import { createLinkedProject } from "./projectCreator.js";
+import { autoLinkWorkspaceProjects } from "./projectSync.js";
 import {
   copyPath,
   deletePath,
@@ -79,20 +80,48 @@ function buildWorkspacePayload(state: Awaited<ReturnType<typeof loadConfig>>) {
   };
 }
 
+async function syncActiveWorkspaceProjects(state: Awaited<ReturnType<typeof loadConfig>>): Promise<{
+  state: Awaited<ReturnType<typeof loadConfig>>;
+  autoLinked: ProjectLink[];
+}> {
+  const active = getActiveWorkspace(state);
+  const { projects, added } = await autoLinkWorkspaceProjects(active);
+  if (added.length === 0) {
+    return { state, autoLinked: [] };
+  }
+
+  const nextState = updateActiveWorkspace(state, (workspace) => ({
+    ...workspace,
+    projects,
+  }));
+  await saveConfig(nextState);
+  return { state: nextState, autoLinked: added };
+}
+
+async function buildWorkspaceResponse(
+  state: Awaited<ReturnType<typeof loadConfig>>,
+  autoLinked: ProjectLink[] = [],
+) {
+  const active = getActiveWorkspace(state);
+  const unlinked = await discoverUnlinkedProjects(active);
+  const suggestions = await suggestProjectLinks(active);
+  return {
+    ...buildWorkspacePayload(state),
+    unlinked,
+    suggestions,
+    autoLinked,
+  };
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
 app.get("/api/workspace", async (_req, res) => {
-  const state = await loadConfig();
-  const active = getActiveWorkspace(state);
-  const unlinked = await discoverUnlinkedProjects(active);
-  const suggestions = await suggestProjectLinks(active);
-  res.json({
-    ...buildWorkspacePayload(state),
-    unlinked,
-    suggestions,
-  });
+  let state = await loadConfig();
+  const { state: syncedState, autoLinked } = await syncActiveWorkspaceProjects(state);
+  state = syncedState;
+  res.json(await buildWorkspaceResponse(state, autoLinked));
 });
 
 app.post("/api/workspaces", async (req, res) => {
@@ -115,13 +144,15 @@ app.post("/api/workspaces", async (req, res) => {
     state.activeWorkspaceId = workspace.id;
     await saveConfig(state);
 
+    const { state: syncedState, autoLinked } = await syncActiveWorkspaceProjects(state);
+
     res.status(201).json({
       workspace: {
         ...workspace,
         conceptRoot: getConceptRoot(workspace),
         blenderRoot: getBlenderRoot(workspace),
       },
-      ...buildWorkspacePayload(state),
+      ...(await buildWorkspaceResponse(syncedState, autoLinked)),
     });
   } catch (error) {
     res.status(500).json({ error: String(error) });
@@ -163,9 +194,7 @@ app.post("/api/workspaces/open", async (req, res) => {
     state.activeWorkspaceId = workspace.id;
     await saveConfig(state);
 
-    const active = getActiveWorkspace(state);
-    const unlinked = await discoverUnlinkedProjects(active);
-    const suggestions = await suggestProjectLinks(active);
+    const { state: syncedState, autoLinked } = await syncActiveWorkspaceProjects(state);
 
     res.status(201).json({
       workspace: {
@@ -173,9 +202,7 @@ app.post("/api/workspaces/open", async (req, res) => {
         conceptRoot: getConceptRoot(workspace),
         blenderRoot: getBlenderRoot(workspace),
       },
-      ...buildWorkspacePayload(state),
-      unlinked,
-      suggestions,
+      ...(await buildWorkspaceResponse(syncedState, autoLinked)),
     });
   } catch (error) {
     res.status(400).json({ error: String(error) });
@@ -185,17 +212,15 @@ app.post("/api/workspaces/open", async (req, res) => {
 app.put("/api/workspaces/active", async (req, res) => {
   try {
     const { workspaceId } = req.body as { workspaceId: string };
-    const state = await loadConfig();
+    let state = await loadConfig();
     if (!state.workspaces.some((w) => w.id === workspaceId)) {
       res.status(404).json({ error: "Workspace not found" });
       return;
     }
     state.activeWorkspaceId = workspaceId;
     await saveConfig(state);
-    const active = getActiveWorkspace(state);
-    const unlinked = await discoverUnlinkedProjects(active);
-    const suggestions = await suggestProjectLinks(active);
-    res.json({ ...buildWorkspacePayload(state), unlinked, suggestions });
+    const { state: syncedState, autoLinked } = await syncActiveWorkspaceProjects(state);
+    res.json(await buildWorkspaceResponse(syncedState, autoLinked));
   } catch (error) {
     res.status(400).json({ error: String(error) });
   }

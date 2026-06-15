@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConceptAssetRole, FileNode, ProjectLink, ProjectSide, WorkspaceResponse } from "./types";
 import { CONCEPT_ROLE_LABELS } from "./types";
 import {
@@ -11,7 +11,6 @@ import {
   fetchShortcuts,
   importFilesToDirectory,
   isImageFile,
-  linkProject,
   markConceptAsset,
   openMasterWorkspace,
   saveAllData,
@@ -42,7 +41,7 @@ import { copyPathToClipboard, resolveCopyPathTarget, resolveCurrentDirectoryPath
 
 interface AppProps {
   workspace: WorkspaceResponse;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => Promise<WorkspaceResponse>;
 }
 
 export default function App({ workspace, onRefresh }: AppProps) {
@@ -129,6 +128,23 @@ export default function App({ workspace, onRefresh }: AppProps) {
     onRefresh: reloadProjectFiles,
     onSelect: setSelectedFile,
   });
+
+  const lastAutoLinkedKeyRef = useRef("");
+
+  useEffect(() => {
+    const linked = workspace.autoLinked;
+    if (!linked?.length) return;
+    const key = linked.map((p) => p.id).join(",");
+    if (lastAutoLinkedKeyRef.current === key) return;
+    lastAutoLinkedKeyRef.current = key;
+    const names = linked.map((p) => p.displayName).join("、");
+    fileManager.notify(`已自动关联 ${linked.length} 个项目：${names}`);
+  }, [workspace.autoLinked, fileManager]);
+
+  useEffect(() => {
+    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId)) return;
+    if (projects[0]) setSelectedProjectId(projects[0].id);
+  }, [projects, selectedProjectId]);
 
   const handleSaveAll = useCallback(
     async (silent = false) => {
@@ -299,6 +315,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
     conceptRoot?: string;
     blenderRoot?: string;
   }) => {
+    lastAutoLinkedKeyRef.current = "";
     await openMasterWorkspace(input);
     await onRefresh();
     setShowOpenMasterWorkspace(false);
@@ -308,21 +325,11 @@ export default function App({ workspace, onRefresh }: AppProps) {
   };
 
   const handleSwitchWorkspace = async (workspaceId: string) => {
+    lastAutoLinkedKeyRef.current = "";
     await switchActiveWorkspace(workspaceId);
     setSelectedProjectId(null);
     setSelectedFile(null);
     await onRefresh();
-  };
-
-  const handleLinkSuggestion = async (suggestion: ProjectLink) => {
-    await linkProject({
-      displayName: suggestion.displayName,
-      conceptPath: suggestion.conceptPath,
-      blenderPath: suggestion.blenderPath,
-    });
-    await onRefresh();
-    setSelectedProjectId(suggestion.id);
-    fileManager.notify(`已关联项目: ${suggestion.displayName}`);
   };
 
   const handleDeleteProject = async (deleteFolders: boolean) => {
@@ -349,7 +356,6 @@ export default function App({ workspace, onRefresh }: AppProps) {
         onCreateWorkspace={() => setShowNewMasterWorkspace(true)}
         onOpenWorkspace={() => setShowOpenMasterWorkspace(true)}
         onSwitchWorkspace={(id) => void handleSwitchWorkspace(id)}
-        onLinkSuggestion={(item) => void handleLinkSuggestion(item)}
         onSaveAll={() => void handleSaveAll(false)}
         saving={savingAll}
         lastSavedAt={lastSavedAt}
@@ -536,7 +542,9 @@ export default function App({ workspace, onRefresh }: AppProps) {
                 ☰ 项目
               </button>
               <p>选择一个项目，或新建一个逻辑项目。</p>
-              <p className="muted">也可先打开 ConceptWorkspace / BlenderWorkspace 放入文件夹，再点击顶部「关联」。</p>
+              <p className="muted">
+                打开工作区后会自动关联名称匹配的概念与生产目录；无法匹配的文件夹会显示在顶部提示中。
+              </p>
             </div>
           )}
         </main>

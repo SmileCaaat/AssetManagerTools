@@ -8,7 +8,7 @@ import {
   parentDir,
 } from "../api";
 import type { ShortcutConfig } from "../config/shortcuts";
-import { isEditableTarget, matchShortcut } from "../config/shortcuts";
+import { hasNativeTextSelection, isEditableTarget, matchShortcut } from "../config/shortcuts";
 import type { FileNode } from "../types";
 
 export interface FileClipboard {
@@ -213,12 +213,17 @@ export function useFileManager({
         e.preventDefault();
         startRename();
       } else if (matchShortcut(e, shortcuts.copy)) {
+        if (hasNativeTextSelection()) return;
+        if (!selectedNode) return;
         e.preventDefault();
         handleCopy();
       } else if (matchShortcut(e, shortcuts.cut)) {
+        if (hasNativeTextSelection()) return;
+        if (!selectedNode) return;
         e.preventDefault();
         handleCut();
       } else if (matchShortcut(e, shortcuts.paste)) {
+        if (!clipboard) return;
         e.preventDefault();
         void handlePaste();
       } else if (matchShortcut(e, shortcuts.delete)) {

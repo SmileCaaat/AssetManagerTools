@@ -75,3 +75,8 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   const tag = target.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
+
+export function hasNativeTextSelection(): boolean {
+  const selection = window.getSelection();
+  return Boolean(selection && selection.toString().length > 0);
+}

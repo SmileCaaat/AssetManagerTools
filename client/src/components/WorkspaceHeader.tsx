@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { ProjectLink, WorkspaceResponse } from "../types";
+import type { WorkspaceResponse } from "../types";
 import { openWorkspaceFolder } from "../api";
+import { ExternalResourceLinksMenu } from "./ExternalResourceLinksMenu";
 
 interface WorkspaceHeaderProps {
   workspace: WorkspaceResponse;
   onCreateWorkspace: () => void;
   onOpenWorkspace: () => void;
   onSwitchWorkspace: (workspaceId: string) => void;
-  onLinkSuggestion: (suggestion: ProjectLink) => void;
   onSaveAll: () => void;
   saving?: boolean;
   lastSavedAt?: Date | null;
@@ -18,19 +18,18 @@ export function WorkspaceHeader({
   onCreateWorkspace,
   onOpenWorkspace,
   onSwitchWorkspace,
-  onLinkSuggestion,
   onSaveAll,
   saving = false,
   lastSavedAt = null,
 }: WorkspaceHeaderProps) {
-  const { active, workspaces, unlinked, suggestions } = workspace;
+  const { active, workspaces, unlinked } = workspace;
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
   const [pathsOpen, setPathsOpen] = useState(false);
   const folderRef = useRef<HTMLDivElement>(null);
   const pathsRef = useRef<HTMLDivElement>(null);
 
   const unlinkedCount = unlinked.conceptOnly.length + unlinked.blenderOnly.length;
-  const showAlert = unlinkedCount > 0 || suggestions.length > 0;
+  const showAlert = unlinkedCount > 0;
 
   const handleOpenFolder = (target: "root" | "concept" | "blender") => {
     setFolderMenuOpen(false);
@@ -60,7 +59,7 @@ export function WorkspaceHeader({
     <header className="top-bar">
       <div className="top-bar-row">
         <div className="top-bar-brand">
-          <span className="brand-icon">◆</span>
+          <img className="brand-icon-img" src="/app-icon.png" alt="" width={28} height={28} />
           <span className="brand-title">资产管理器</span>
         </div>
 
@@ -100,6 +99,8 @@ export function WorkspaceHeader({
         <div className="top-bar-spacer" />
 
         <div className="top-bar-actions">
+          <ExternalResourceLinksMenu />
+
           <div className="dropdown" ref={folderRef}>
             <button
               type="button"
@@ -155,26 +156,10 @@ export function WorkspaceHeader({
 
       {showAlert && (
         <div className="top-bar-alert">
-          {unlinkedCount > 0 && (
-            <span className="alert-text">
-              未关联 {unlinkedCount} 项
-              <span className="muted">（打开文件夹放入项目后可关联）</span>
-            </span>
-          )}
-          {suggestions.length > 0 && (
-            <div className="alert-actions">
-              {suggestions.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="chip-btn"
-                  onClick={() => onLinkSuggestion(item)}
-                >
-                  关联 {item.displayName}
-                </button>
-              ))}
-            </div>
-          )}
+          <span className="alert-text">
+            未自动关联 {unlinkedCount} 项
+            <span className="muted">（概念与生产目录名不匹配，需手动新建或调整文件夹名）</span>
+          </span>
         </div>
       )}
     </header>

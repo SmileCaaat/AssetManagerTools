@@ -51,26 +51,28 @@ export function PathPickerField({
     <div className="path-picker-field">
       <span className="path-picker-label">{label}</span>
       {!fsSupported && (
-        <p className="modal-hint">当前浏览器不支持文件夹选择，将使用系统对话框（请优先使用 Chrome / Edge）。</p>
+        <p className="path-picker-note">
+          当前浏览器不支持文件夹选择，将使用系统对话框（请优先使用 Chrome / Edge）。
+        </p>
       )}
-      <div className="path-picker-actions">
+      <div className="path-picker-row">
         <button
           type="button"
-          className="btn-ghost path-picker-btn"
+          className="btn-pick-folder"
           onClick={() => void handleBrowse()}
           disabled={picking}
         >
           {picking ? "选择中…" : "选择文件夹"}
         </button>
-        {value ? (
-          <code className="path-picker-value" title={value}>
-            {value}
-          </code>
-        ) : (
-          <span className="path-picker-placeholder">
-            {required ? "请点击左侧按钮选择文件夹" : "未选择"}
-          </span>
-        )}
+        <div className="path-picker-path" title={value || undefined}>
+          {value ? (
+            <code className="path-picker-value">{value}</code>
+          ) : (
+            <span className="path-picker-placeholder">
+              {required ? "尚未选择文件夹" : "未选择（可选）"}
+            </span>
+          )}
+        </div>
       </div>
       {hint}
       {error && <p className="form-error">{error}</p>}

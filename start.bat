@@ -8,6 +8,10 @@ if errorlevel 1 goto no_node
 where npm >nul 2>&1
 if errorlevel 1 goto no_npm
 
+if not exist "AssetManager.lnk" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0create-launcher.ps1" -Silent >nul 2>&1
+)
+
 if not exist "node_modules\" goto install_all
 if not exist "client\node_modules\" goto install_client
 goto launch
@@ -38,6 +42,7 @@ echo   Frontend: http://localhost:5173
 echo   API:      http://localhost:3456
 echo ========================================
 echo.
+echo Tip: Use AssetManager.lnk for custom icon launcher.
 echo Close this window to stop the server.
 echo.
 start "" cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:5173"
