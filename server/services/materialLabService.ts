@@ -5,6 +5,7 @@ import { loadTextureTags, syncTextureTagsFromFiles } from "../blenderTextureTags
 import type { TextureMapType } from "../blenderTextureTags.js";
 import {
   DEFAULT_MATERIAL_LAB_PARAMS,
+  type MaterialLabParams,
   type MaterialLabState,
   type MaterialLabTextureSlot,
 } from "../materialLabTypes.js";
@@ -140,6 +141,26 @@ export async function buildDefaultMaterialLabState(
   };
 }
 
+function normalizeOutlineLodParams(params: MaterialLabParams): MaterialLabParams {
+  let next = params;
+  if (params.outlineMinWidth > params.outlineWidth * 2) {
+    next = { ...next, outlineMinWidth: 0.001 };
+  }
+  // 旧版 Material Lab 默认（FarScale 0.25 / FadeStart 8）→ Unity 实测标准
+  if (
+    Math.abs(params.outlineFarWidthScale - 0.25) < 0.001 &&
+    Math.abs(params.outlineFadeStart - 8) < 0.001
+  ) {
+    next = {
+      ...next,
+      outlineFarWidthScale: 0.01,
+      outlineFadeStart: -20,
+      outlineMinWidth: 0.001,
+    };
+  }
+  return next;
+}
+
 export async function loadMaterialLabState(
   projectRoot: string,
   project: ProjectLink,
@@ -156,7 +177,7 @@ export async function loadMaterialLabState(
       ...defaults,
       ...parsed,
       textures: { ...defaults.textures, ...parsed.textures },
-      params: { ...defaults.params, ...parsed.params },
+      params: normalizeOutlineLodParams({ ...defaults.params, ...parsed.params }),
       preview: { ...defaults.preview, ...parsed.preview },
       slang: { ...defaults.slang, ...parsed.slang },
       unity: { ...defaults.unity, ...parsed.unity },

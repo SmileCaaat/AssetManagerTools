@@ -18,6 +18,14 @@ export interface MaterialLabParams {
   outlineEnabled: boolean;
   outlineWidth: number;
   outlineColor: [number, number, number, number];
+  outlineFarWidthScale: number;
+  outlineFadeStart: number;
+  outlineFadeEnd: number;
+  outlineMinWidth: number;
+  shadowReceiveStrength: number;
+  ambientStrength: number;
+  rimLightInfluence: number;
+  lightColorInfluence: number;
 }
 
 export interface MaterialLabState {
@@ -76,4 +84,12 @@ export const DEFAULT_MATERIAL_LAB_PARAMS: MaterialLabParams = {
   outlineEnabled: true,
   outlineWidth: 0.01,
   outlineColor: [0, 0, 0, 1],
+  outlineFarWidthScale: 0.01,
+  outlineFadeStart: -20,
+  outlineFadeEnd: 25,
+  outlineMinWidth: 0.001,
+  shadowReceiveStrength: 0.7,
+  ambientStrength: 0.25,
+  rimLightInfluence: 0.2,
+  lightColorInfluence: 0.6,
 };

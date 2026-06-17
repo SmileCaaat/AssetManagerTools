@@ -12,13 +12,23 @@ Shader "{{SHADER_NAME}}"
 
         _RampSteps ("Ramp Steps", Float) = 3
         _ShadowStrength ("Shadow Strength", Range(0,1)) = 0.45
+        _ShadowReceiveStrength ("Shadow Receive Strength", Range(0,1)) = 0.7
+
+        _AmbientStrength ("Ambient Strength", Range(0,1)) = 0.25
 
         _RimColor ("Rim Color", Color) = (1,0.82,0.55,1)
         _RimPower ("Rim Power", Float) = 4
         _RimIntensity ("Rim Intensity", Float) = 2.5
+        _RimLightInfluence ("Rim Light Influence", Range(0,1)) = 0.2
+
+        _LightColorInfluence ("Light Color Influence", Range(0,1)) = 0.6
 
         _OutlineWidth ("Outline Width", Range(0, 0.05)) = 0.01
         _OutlineColor ("Outline Color", Color) = (0,0,0,1)
+        _OutlineFarWidthScale ("Outline Far Width Scale", Range(0, 1)) = 0.01
+        _OutlineFadeStart ("Outline Fade Start", Float) = -20
+        _OutlineFadeEnd ("Outline Fade End", Float) = 25
+        _OutlineMinWidth ("Outline Min Width", Float) = 0.001
     }
 
     SubShader
@@ -36,6 +46,7 @@ Shader "{{SHADER_NAME}}"
             Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Front
             ZWrite On
+            ZTest LEqual
 
             HLSLPROGRAM
             #pragma vertex outlineVert
@@ -45,6 +56,10 @@ Shader "{{SHADER_NAME}}"
 
             float _OutlineWidth;
             float4 _OutlineColor;
+            float _OutlineFarWidthScale;
+            float _OutlineFadeStart;
+            float _OutlineFadeEnd;
+            float _OutlineMinWidth;
 
             struct OutlineAttributes
             {
@@ -64,10 +79,23 @@ Shader "{{SHADER_NAME}}"
                 VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
                 VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS);
 
-                // 裁剪空间外扩：屏幕像素级厚度，与 FBX 单位无关
                 float4 positionCS = vertexInput.positionCS;
                 float3 normalCS = TransformWorldToHClipDir(normalInput.normalWS, true);
-                positionCS.xy += normalCS.xy * _OutlineWidth * positionCS.w;
+
+                float dist = distance(_WorldSpaceCameraPos, vertexInput.positionWS);
+
+                float farT = saturate(
+                    (dist - _OutlineFadeStart) / max(_OutlineFadeEnd - _OutlineFadeStart, 0.0001)
+                );
+
+                float widthScale = lerp(1.0, _OutlineFarWidthScale, farT);
+                float scaledWidth = _OutlineWidth * widthScale;
+
+                float finalOutlineWidth = scaledWidth;
+                if (farT > 0.001)
+                    finalOutlineWidth = max(scaledWidth, _OutlineMinWidth * farT);
+
+                positionCS.xy += normalCS.xy * finalOutlineWidth * positionCS.w;
 
                 output.positionHCS = positionCS;
                 return output;
@@ -77,7 +105,7 @@ Shader "{{SHADER_NAME}}"
             {
                 if (_OutlineWidth <= 0.0001)
                     discard;
-                return half4(_OutlineColor.rgb, 1);
+                return half4(_OutlineColor.rgb, _OutlineColor.a);
             }
             ENDHLSL
         }
@@ -88,9 +116,14 @@ Shader "{{SHADER_NAME}}"
             Tags { "LightMode" = "UniversalForward" }
 
             HLSLPROGRAM
+            #pragma target 2.0
 
             #pragma vertex vert
             #pragma fragment frag
+
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -105,9 +138,13 @@ Shader "{{SHADER_NAME}}"
             float _BumpScale;
             float _RampSteps;
             float _ShadowStrength;
+            float _ShadowReceiveStrength;
+            float _AmbientStrength;
             float4 _RimColor;
             float _RimPower;
             float _RimIntensity;
+            float _RimLightInfluence;
+            float _LightColorInfluence;
 
             struct Attributes
             {
@@ -125,6 +162,7 @@ Shader "{{SHADER_NAME}}"
                 float3 tangentWS : TEXCOORD2;
                 float3 bitangentWS : TEXCOORD3;
                 float2 uv : TEXCOORD4;
+                float4 shadowCoord : TEXCOORD5;
             };
 
             float3 SampleNormalWS(Varyings input)
@@ -148,6 +186,7 @@ Shader "{{SHADER_NAME}}"
                 output.tangentWS = normInputs.tangentWS;
                 output.bitangentWS = normInputs.bitangentWS;
                 output.uv = input.uv;
+                output.shadowCoord = TransformWorldToShadowCoord(posInputs.positionWS);
                 return output;
             }
 
@@ -156,10 +195,15 @@ Shader "{{SHADER_NAME}}"
                 float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
                 float3 baseColor = baseSample.rgb * _BaseColorTint.rgb;
 
-                Light mainLight = GetMainLight();
                 float3 normalWS = SampleNormalWS(input);
-                float3 lightDirWS = normalize(mainLight.direction);
                 float3 viewDirWS = normalize(GetWorldSpaceViewDir(input.positionWS));
+
+                Light mainLight = GetMainLight(input.shadowCoord);
+                float3 lightDirWS = normalize(mainLight.direction);
+
+                float ndotl = saturate(dot(normalWS, lightDirWS));
+                float shadowLit = mainLight.shadowAttenuation * mainLight.distanceAttenuation;
+                float litTerm = ndotl * lerp(1.0, shadowLit, _ShadowReceiveStrength);
 
                 ToonParams p;
                 p.baseColor = baseColor;
@@ -169,11 +213,92 @@ Shader "{{SHADER_NAME}}"
                 p.rimIntensity = _RimIntensity;
                 p.rimColor = _RimColor.rgb;
 
-                float3 color = AMT_EvaluateToon(normalWS, lightDirWS, viewDirWS, p);
+                float3 color = AMT_ApplyToonRamp(litTerm, p);
+
+                float3 lightTint = lerp(float3(1.0, 1.0, 1.0), mainLight.color, _LightColorInfluence);
+                color *= lightTint;
+
+                float3 ambient = SampleSH(normalWS) * _AmbientStrength;
+                color += baseColor * ambient;
+
+                float rim = pow(1.0 - saturate(dot(normalWS, viewDirWS)), _RimPower);
+                float3 rimCol = lerp(_RimColor.rgb, _RimColor.rgb * mainLight.color, _RimLightInfluence);
+                color += rimCol * rim * _RimIntensity;
 
                 return half4(color, baseSample.a * _BaseColorTint.a);
             }
 
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0
+            Cull Back
+
+            HLSLPROGRAM
+            #pragma target 2.0
+
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
+
+            #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+
+            float3 _LightDirection;
+            float3 _LightPosition;
+
+            struct ShadowAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+            };
+
+            struct ShadowVaryings
+            {
+                float4 positionCS : SV_POSITION;
+            };
+
+            float4 GetShadowPositionHClip(ShadowAttributes input)
+            {
+                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+
+            #if _CASTING_PUNCTUAL_LIGHT_SHADOW
+                float3 lightDirectionWS = normalize(_LightPosition - positionWS);
+            #else
+                float3 lightDirectionWS = _LightDirection;
+            #endif
+
+                float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
+
+            #if UNITY_REVERSED_Z
+                positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+            #else
+                positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+            #endif
+
+                return positionCS;
+            }
+
+            ShadowVaryings ShadowPassVertex(ShadowAttributes input)
+            {
+                ShadowVaryings output;
+                output.positionCS = GetShadowPositionHClip(input);
+                return output;
+            }
+
+            half4 ShadowPassFragment(ShadowVaryings input) : SV_TARGET
+            {
+                return 0;
+            }
             ENDHLSL
         }
     }

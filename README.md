@@ -103,9 +103,10 @@ npm start
 - 保存 `.asset-manager/material_lab.json`
 - **合并 Metallic + Roughness** → `T_<Name>_MetallicSmoothness.png`（R=Metallic, A=Smoothness）
 - **检查 Unity 贴图规范**
-- **导出 Unity 材质** → `BlenderWorkspace/UnityAssets/<项目名>/`（Models、Textures、Shaders、Materials 一键整理）
-- Unity：**Asset Manager** 菜单支持单个 / 批量导入 `.material.json` 生成 `.mat`
-- **Slang 编译（阶段 B）已搁置** — 使用内置 fallback HLSL，Unity 效果已满足需求
+- **导出 Unity 包** → `BlenderWorkspace/UnityAssets/<项目名>/`（Models、Textures、Shaders、Materials 一键整理）
+- Unity：**Asset Manager** 菜单支持单个 / 批量导入 `.material.json` 生成 `.mat`（导入时自动配置 Normal / 线性贴图类型）
+- **ToonURP** 支持 URP 主光方向、颜色、阴影衰减、`SampleSH` 环境光、**ShadowCaster** 投影；Outline 带远景宽度 LOD
+- **Slang 编译（阶段 B）已搁置** — 使用内置 fallback HLSL
 
 ---
 
@@ -182,7 +183,7 @@ npm start
 | GET/PUT | `/api/projects/:id/material-lab` | Material Lab 状态读写 |
 | POST | `/api/projects/:id/material-lab/merge-metallic-smoothness` | 合并 Metallic + Roughness |
 | POST | `/api/projects/:id/material-lab/check` | Unity 贴图规范检查 |
-| POST | `/api/projects/:id/material-lab/export-unity` | 导出 Unity 材质包 |
+| POST | `/api/projects/:id/material-lab/export-unity` | 导出 Unity 包（整角色资产） |
 | POST | `/api/images/resize` | 纹理尺寸转换 |
 | POST | `/api/images/mirror` | 概念图片镜像保存 |
 | POST | `/api/fs/*` | 重命名、删除、复制、移动、导入、图片分割等 |

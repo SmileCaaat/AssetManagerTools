@@ -169,6 +169,10 @@ export function MaterialParamPanel({ params, onChange }: MaterialParamPanelProps
       </label>
       <SliderRow label="Outline Width" value={params.outlineWidth} min={0} max={0.03} step={0.001} onChange={(v) => patch({ outlineWidth: v })} />
       <ColorRow label="Outline Color" value={params.outlineColor} onChange={(v) => patch({ outlineColor: v })} />
+      <SliderRow label="Outline Far Width Scale" value={params.outlineFarWidthScale} min={0} max={1} step={0.01} onChange={(v) => patch({ outlineFarWidthScale: v })} />
+      <SliderRow label="Outline Fade Start" value={params.outlineFadeStart} min={-30} max={30} step={1} onChange={(v) => patch({ outlineFadeStart: v })} />
+      <SliderRow label="Outline Fade End" value={params.outlineFadeEnd} min={0} max={50} step={0.5} onChange={(v) => patch({ outlineFadeEnd: v })} />
+      <SliderRow label="Outline Min Width" value={params.outlineMinWidth} min={0} max={0.01} step={0.001} onChange={(v) => patch({ outlineMinWidth: v })} />
     </div>
   );
 }

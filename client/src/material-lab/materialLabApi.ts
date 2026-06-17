@@ -59,11 +59,3 @@ export function checkUnityTextureStandard(projectId: string): Promise<MaterialCh
     body: JSON.stringify({}),
   });
 }
-
-export function openMaterialLabExportFolder(projectId: string): Promise<{ ok: boolean; path: string }> {
-  return request(`/api/projects/${projectId}/material-lab/open-export-folder`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-}

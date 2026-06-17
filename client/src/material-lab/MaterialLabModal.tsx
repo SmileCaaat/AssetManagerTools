@@ -6,7 +6,6 @@ import {
   exportUnityMaterialPackage,
   fetchMaterialLabState,
   mergeMetallicSmoothness,
-  openMaterialLabExportFolder,
   saveMaterialLabState,
 } from "./materialLabApi";
 import { MaterialParamPanel, TextureSlotPanel } from "./MaterialLabPanels";
@@ -138,14 +137,6 @@ export function MaterialLabModal({
     }
   };
 
-  const handleOpenExport = async () => {
-    try {
-      await openMaterialLabExportFolder(project.id);
-    } catch (error) {
-      onNotifyRef.current(String(error), "error");
-    }
-  };
-
   return (
     <div className="modal-overlay material-lab-overlay" onClick={handleClose}>
       <div className="material-lab-modal" onClick={(e) => e.stopPropagation()}>
@@ -163,10 +154,7 @@ export function MaterialLabModal({
               {checking ? "检查中…" : "检查贴图规范"}
             </button>
             <button type="button" className="preview-action-btn" disabled={exporting || !state} onClick={() => void handleExport()}>
-              {exporting ? "导出中…" : "导出 Unity 材质"}
-            </button>
-            <button type="button" className="preview-action-btn" onClick={() => void handleOpenExport()} title="打开 BlenderWorkspace/UnityAssets/<项目名>/">
-              打开 Unity 资产包
+              {exporting ? "导出中…" : "导出 Unity 包"}
             </button>
             <button type="button" className="preview-action-btn" onClick={handleClose}>
               关闭

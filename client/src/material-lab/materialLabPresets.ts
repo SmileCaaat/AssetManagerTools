@@ -14,6 +14,10 @@ export const DEFAULT_MATERIAL_LAB_PARAMS: MaterialLabParams = {
   outlineEnabled: true,
   outlineWidth: 0.01,
   outlineColor: [0, 0, 0, 1],
+  outlineFarWidthScale: 0.01,
+  outlineFadeStart: -20,
+  outlineFadeEnd: 25,
+  outlineMinWidth: 0.001,
 };
 
 export interface MaterialLabPreset {
@@ -174,7 +178,11 @@ export function materialLabParamsEqual(a: MaterialLabParams, b: MaterialLabParam
     Math.abs(a.matcapStrength - b.matcapStrength) < FLOAT_EPS &&
     a.outlineEnabled === b.outlineEnabled &&
     Math.abs(a.outlineWidth - b.outlineWidth) < FLOAT_EPS &&
-    colorEqual(a.outlineColor, b.outlineColor)
+    colorEqual(a.outlineColor, b.outlineColor) &&
+    Math.abs(a.outlineFarWidthScale - b.outlineFarWidthScale) < FLOAT_EPS &&
+    Math.abs(a.outlineFadeStart - b.outlineFadeStart) < FLOAT_EPS &&
+    Math.abs(a.outlineFadeEnd - b.outlineFadeEnd) < FLOAT_EPS &&
+    Math.abs(a.outlineMinWidth - b.outlineMinWidth) < FLOAT_EPS
   );
 }
 

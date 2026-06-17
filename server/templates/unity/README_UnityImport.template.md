@@ -43,5 +43,18 @@ BlenderWorkspace/UnityAssets/
 
 ## 贴图设置
 
-- Normal → Import Settings → **Normal Map**
-- MetallicSmoothness → R=Metallic，A=Smoothness
+导入器会在赋材质时自动配置（无需手改 Import Settings）：
+
+| Unity 属性 | 自动设置 |
+|------------|----------|
+| `_BumpMap` / `_NormalMap` | Texture Type = **Normal Map**，sRGB 关闭 |
+| `_MetallicGlossMap` / `_OcclusionMap` | sRGB 关闭 |
+| `_BaseMap` / `_EmissionMap` | 保持默认 sRGB |
+
+## ToonURP 光照（Unity 侧）
+
+- Shader：`AssetManagerTools/ToonURP`
+- URP Asset 需开启 **Main Light Shadows**
+- ForwardLit 使用主光方向、颜色、阴影衰减与环境光；支持 **ShadowCaster** 向地面投影
+- 推荐 Outline 远景参数（Unity 实测）：`Outline Width` 0.01、`Far Width Scale` 0.01、`Fade Start` -20、`Fade End` 25、`Min Width` 0.001
+- 光照相关 float 默认：`ShadowReceiveStrength` 0.7、`AmbientStrength` 0.25、`RimLightInfluence` 0.2、`LightColorInfluence` 0.6

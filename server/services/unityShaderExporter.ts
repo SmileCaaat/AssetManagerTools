@@ -102,6 +102,21 @@ interface MaterialJsonV2 {
   floats: { key: string; value: number }[];
 }
 
+const DEFAULT_LIGHTING_PARAMS = {
+  shadowReceiveStrength: 0.7,
+  ambientStrength: 0.25,
+  rimLightInfluence: 0.2,
+  lightColorInfluence: 0.6,
+} as const;
+
+function lightingParam(
+  state: MaterialLabState,
+  key: keyof typeof DEFAULT_LIGHTING_PARAMS,
+): number {
+  const value = state.params[key];
+  return typeof value === "number" ? value : DEFAULT_LIGHTING_PARAMS[key];
+}
+
 function buildMaterialJson(state: MaterialLabState, bundleName: string, copied: CopiedAssets): MaterialJsonV2 {
   const materialName = `M_${state.projectName}`;
   const textureEntries: { key: string; path: string }[] = [];
@@ -134,12 +149,20 @@ function buildMaterialJson(state: MaterialLabState, bundleName: string, copied: 
     floats: [
       { key: "_RampSteps", value: state.params.rampSteps },
       { key: "_ShadowStrength", value: state.params.shadowStrength },
+      { key: "_ShadowReceiveStrength", value: lightingParam(state, "shadowReceiveStrength") },
+      { key: "_AmbientStrength", value: lightingParam(state, "ambientStrength") },
       { key: "_RimPower", value: state.params.rimPower },
       { key: "_RimIntensity", value: state.params.rimIntensity },
+      { key: "_RimLightInfluence", value: lightingParam(state, "rimLightInfluence") },
+      { key: "_LightColorInfluence", value: lightingParam(state, "lightColorInfluence") },
       {
         key: "_OutlineWidth",
         value: state.params.outlineEnabled ? state.params.outlineWidth : 0,
       },
+      { key: "_OutlineFarWidthScale", value: state.params.outlineFarWidthScale },
+      { key: "_OutlineFadeStart", value: state.params.outlineFadeStart },
+      { key: "_OutlineFadeEnd", value: state.params.outlineFadeEnd },
+      { key: "_OutlineMinWidth", value: state.params.outlineMinWidth },
       { key: "_BumpScale", value: 1 },
     ],
   };

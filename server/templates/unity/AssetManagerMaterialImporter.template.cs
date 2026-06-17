@@ -17,7 +17,11 @@ public static class AssetManagerMaterialImporter
             "json");
 
         if (string.IsNullOrEmpty(jsonPath)) return;
-        ImportMaterial(jsonPath);
+        if (ImportMaterial(jsonPath))
+        {
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
     }
 
     [MenuItem(MenuRoot + "Import All Materials In Folder...", false, 2)]
@@ -152,6 +156,7 @@ public static class AssetManagerMaterialImporter
             }
 
             var texAssetPath = ToAssetsRelative(texFullPath);
+            ConfigureTextureImportSettings(texAssetPath, entry.key);
             var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texAssetPath);
             if (tex == null)
             {
@@ -161,6 +166,39 @@ public static class AssetManagerMaterialImporter
 
             mat.SetTexture(entry.key, tex);
         }
+    }
+
+    private static void ConfigureTextureImportSettings(string texAssetPath, string propertyKey)
+    {
+        var importer = AssetImporter.GetAtPath(texAssetPath) as TextureImporter;
+        if (importer == null) return;
+
+        var changed = false;
+
+        if (propertyKey == "_BumpMap" || propertyKey == "_NormalMap")
+        {
+            if (importer.textureType != TextureImporterType.NormalMap)
+            {
+                importer.textureType = TextureImporterType.NormalMap;
+                changed = true;
+            }
+            if (importer.sRGBTexture)
+            {
+                importer.sRGBTexture = false;
+                changed = true;
+            }
+        }
+        else if (propertyKey == "_MetallicGlossMap" || propertyKey == "_OcclusionMap")
+        {
+            if (importer.sRGBTexture)
+            {
+                importer.sRGBTexture = false;
+                changed = true;
+            }
+        }
+
+        if (changed)
+            importer.SaveAndReimport();
     }
 
     private static void ApplyColors(Material mat, MaterialJsonRoot data)

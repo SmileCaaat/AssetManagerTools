@@ -14,8 +14,8 @@
 
 ## 零、实现状态（同步仓库，请以此为准）
 
-> **最后更新：2026-06-17** · 仓库：`main` 分支。  
-> Unity 实机验收通过（Mushpig / Punchgob / stonemork 等）；**Slang 阶段 B 正式搁置**，维持 fallback HLSL 即可。
+> **最后更新：2026-06-18** · 仓库：`main` 分支。  
+> Unity 实机验收通过（Mushpig / Punchgob / stonemork）；**Slang 阶段 B 正式搁置**，维持 fallback HLSL 即可。
 
 ### 总览
 
@@ -23,8 +23,8 @@
 |------|------|------|
 | **阶段 A** — Material Lab MVP | **已完成** | 可日常使用 |
 | **阶段 C** — Unity 导出体验 | **已完成** | `UnityAssets/<项目名>/` 整包 + Asset Manager 批量/单个导入 |
-| **阶段 D** — 预览精调 | **部分完成** | Outline/Matcap/参数预设；Normal 网页预览仍用几何法线 |
-| **阶段 B** — Slang `slangc` | **搁置** | Unity 效果已满足需求，**不再计划实现**；见下文 |
+| **阶段 D** — 预览精调 | **部分完成** | Outline 远景 LOD、Matcap/预设；网页预览仍为简化光照与几何法线 |
+| **阶段 B** — Slang `slangc` | **搁置** | Unity 效果已满足需求，**不再计划实现** |
 
 ### 已实现（Material Lab 主线）
 
@@ -50,13 +50,20 @@ BlenderWorkspace/UnityAssets/
 ```
 
 - `POST .../material-lab/export-unity` 自动复制 FBX、贴图、Shader、材质 JSON
+- UI 按钮：**导出 Unity 包**（非仅材质；已移除「打开 Unity 资产包」）
 - Unity 菜单：**Import Material From JSON** / **Import All Materials In Folder** / 右键文件夹批量导入
-- Toon Shader：**裁剪空间 Outline** + Normal Map + fallback `ToonCore.generated.hlsl`（**非 Slang 产物，已足够**）
+- 单个导入成功后也会 `SaveAssets` / `Refresh`；`_BumpMap` 等贴图自动设置导入类型
+- **ToonURP**（`AssetManagerTools/ToonURP`）：
+  - **Outline Pass**：Cull Front 背面壳 + 裁剪空间外扩 + 远景宽度 LOD（`FarWidthScale` / `FadeStart` / `FadeEnd` / `MinWidth`）
+  - **ForwardLit**：`GetMainLight(shadowCoord)`、阴影/距离衰减调制 Ramp、`SampleSH` 环境光、主光色 / Rim 光色影响
+  - **ShadowCaster**：角色可向地面投影
+  - Normal Map + fallback `ToonCore.generated.hlsl`（**非 Slang 产物**）
 
 **网页预览**
 
-- BaseColor + Toon 色阶 + Rim + Outline（裁剪空间，与 Unity 数值接近）
+- BaseColor + Toon 色阶 + Rim + Outline（远景 LOD 与 Unity 公式同步；仍为 Three.js 简化光照）
 - Matcap 程序化近似（MatcapStrength > 0）
+- **与 Unity 存在可见差异是正常的**；Unity 为最终验收标准
 
 **数据与 API**
 
@@ -399,8 +406,16 @@ BlenderWorkspace/projects/<项目名>/
     "rimIntensity": 2.5,
     "matcapStrength": 0.0,
     "outlineEnabled": true,
-    "outlineWidth": 0.015,
-    "outlineColor": [0, 0, 0, 1]
+    "outlineWidth": 0.01,
+    "outlineColor": [0, 0, 0, 1],
+    "outlineFarWidthScale": 0.01,
+    "outlineFadeStart": -20,
+    "outlineFadeEnd": 25,
+    "outlineMinWidth": 0.001,
+    "shadowReceiveStrength": 0.7,
+    "ambientStrength": 0.25,
+    "rimLightInfluence": 0.2,
+    "lightColorInfluence": 0.6
   },
   "slang": {
     "enabled": true,

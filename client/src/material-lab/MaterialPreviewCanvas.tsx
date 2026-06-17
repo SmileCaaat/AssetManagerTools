@@ -87,11 +87,29 @@ void main() {
 
 const OUTLINE_VERT = `
 uniform float outlineWidth;
+uniform float outlineFarWidthScale;
+uniform float outlineFadeStart;
+uniform float outlineFadeEnd;
+uniform float outlineMinWidth;
 
 void main() {
   vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   vec3 clipNormal = normalize(mat3(projectionMatrix * modelViewMatrix) * normal);
-  clipPos.xy += clipNormal.xy * outlineWidth * clipPos.w;
+
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  float dist = length(cameraPosition - worldPos.xyz);
+  float farT = clamp(
+    (dist - outlineFadeStart) / max(outlineFadeEnd - outlineFadeStart, 0.0001),
+    0.0,
+    1.0
+  );
+  float widthScale = mix(1.0, outlineFarWidthScale, farT);
+  float scaledWidth = outlineWidth * widthScale;
+  float finalOutlineWidth = scaledWidth;
+  if (farT > 0.001)
+    finalOutlineWidth = max(scaledWidth, outlineMinWidth * farT);
+
+  clipPos.xy += clipNormal.xy * finalOutlineWidth * clipPos.w;
   gl_Position = clipPos;
 }
 `;
@@ -168,6 +186,10 @@ function useOutlineMaterial(params: MaterialLabParams): THREE.ShaderMaterial {
       uniforms: {
         outlineWidth: { value: params.outlineWidth },
         outlineColor: { value: new THREE.Vector4(...params.outlineColor) },
+        outlineFarWidthScale: { value: params.outlineFarWidthScale },
+        outlineFadeStart: { value: params.outlineFadeStart },
+        outlineFadeEnd: { value: params.outlineFadeEnd },
+        outlineMinWidth: { value: params.outlineMinWidth },
       },
       side: THREE.BackSide,
       depthWrite: true,
@@ -182,6 +204,10 @@ function useOutlineMaterial(params: MaterialLabParams): THREE.ShaderMaterial {
   useEffect(() => {
     material.uniforms.outlineWidth.value = params.outlineEnabled ? params.outlineWidth : 0;
     material.uniforms.outlineColor.value.set(...params.outlineColor);
+    material.uniforms.outlineFarWidthScale.value = params.outlineFarWidthScale;
+    material.uniforms.outlineFadeStart.value = params.outlineFadeStart;
+    material.uniforms.outlineFadeEnd.value = params.outlineFadeEnd;
+    material.uniforms.outlineMinWidth.value = params.outlineMinWidth;
   }, [material, params]);
 
   return material;

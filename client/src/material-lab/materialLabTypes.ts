@@ -18,6 +18,10 @@ export interface MaterialLabParams {
   outlineEnabled: boolean;
   outlineWidth: number;
   outlineColor: [number, number, number, number];
+  outlineFarWidthScale: number;
+  outlineFadeStart: number;
+  outlineFadeEnd: number;
+  outlineMinWidth: number;
 }
 
 export interface MaterialLabState {
