@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ConceptAssetRole,
   FileNode,
@@ -18,6 +18,7 @@ import {
   fetchProjectTree,
   fetchShortcuts,
   fetchTextureTags,
+  formatApiError,
   importFilesToDirectory,
   isImageFile,
   markConceptAsset,
@@ -29,6 +30,14 @@ import {
   switchActiveWorkspace,
 } from "./api";
 import { DEFAULT_SHORTCUTS, type ShortcutConfig } from "./config/shortcuts";
+import {
+  type AssetDomain,
+  ASSET_DOMAIN_LABELS,
+  ASSET_DOMAIN_ORDER,
+  DEFAULT_ASSET_DOMAIN,
+  normalizeAssetDomain,
+} from "./config/assetDomains";
+import { debugLog, isDebugMode } from "./lib/debugLog";
 import { AssetGalleryPanel } from "./components/AssetGalleryPanel";
 import { FileTree } from "./components/FileTree";
 import { NewProjectModal } from "./components/NewProjectModal";
@@ -54,17 +63,56 @@ import { clearThreeLoaderCache } from "./lib/threeCleanup";
 import { MaterialLabModal } from "./material-lab/MaterialLabModal";
 
 interface AppProps {
-  workspace: WorkspaceResponse;
+  workspace: WorkspaceResponse & { active: NonNullable<WorkspaceResponse["active"]> };
   onRefresh: () => Promise<WorkspaceResponse>;
+}
+
+function readStoredDomain(workspaceId: string): AssetDomain {
+  try {
+    const saved = sessionStorage.getItem(`amt:${workspaceId}:domain`);
+    if (saved && ASSET_DOMAIN_ORDER.includes(saved as AssetDomain)) {
+      return saved as AssetDomain;
+    }
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_ASSET_DOMAIN;
+}
+
+function readStoredProjectId(
+  workspaceId: string,
+  projects: ProjectLink[],
+  domain: AssetDomain,
+): string | null {
+  try {
+    const saved = sessionStorage.getItem(`amt:${workspaceId}:projectId`);
+    if (
+      saved &&
+      projects.some(
+        (p) => p.id === saved && normalizeAssetDomain(p.domain) === domain,
+      )
+    ) {
+      return saved;
+    }
+  } catch {
+    /* ignore */
+  }
+  return (
+    projects.find((p) => normalizeAssetDomain(p.domain) === domain)?.id ??
+    projects[0]?.id ??
+    null
+  );
 }
 
 export default function App({ workspace, onRefresh }: AppProps) {
   const { active } = workspace;
   const projects = active.projects;
+  const initialDomain = readStoredDomain(active.id);
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    projects[0]?.id ?? null,
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() =>
+    readStoredProjectId(active.id, projects, initialDomain),
   );
+  const [activeDomain, setActiveDomain] = useState<AssetDomain>(initialDomain);
   const [side, setSide] = useState<ProjectSide>("concept");
   const [tree, setTree] = useState<FileNode | null>(null);
   const [projectRoot, setProjectRoot] = useState<string | null>(null);
@@ -86,65 +134,201 @@ export default function App({ workspace, onRefresh }: AppProps) {
   const [savingAll, setSavingAll] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [projectPathWarning, setProjectPathWarning] = useState<string | null>(null);
+  const [viewProjectKey, setViewProjectKey] = useState<string | null>(null);
   const projectLoadGeneration = useRef(0);
+  const selectedProjectIdRef = useRef(selectedProjectId);
+  const sideRef = useRef(side);
+  const activeDomainRef = useRef(activeDomain);
+  selectedProjectIdRef.current = selectedProjectId;
+  sideRef.current = side;
+  activeDomainRef.current = activeDomain;
   const notifyRef = useRef<(text: string, type?: "info" | "error") => void>(() => {});
   const showMaterialLabRef = useRef(showMaterialLab);
   showMaterialLabRef.current = showMaterialLab;
 
+  const projectBelongsToDomain = useCallback(
+    (projectId: string, domain: AssetDomain) =>
+      projects.some(
+        (p) => p.id === projectId && normalizeAssetDomain(p.domain) === domain,
+      ),
+    [projects],
+  );
+
+  const clearProjectView = useCallback(() => {
+    setSelectedFile(null);
+    setShowMaterialLab(false);
+    setTree(null);
+    setAssets([]);
+    setProjectRoot(null);
+    setConceptTags({});
+    setTextureTags({});
+    setProjectPathWarning(null);
+    setViewProjectKey(null);
+    clearThreeLoaderCache();
+  }, []);
+
+  const domainProjects = useMemo(
+    () => projects.filter((p) => normalizeAssetDomain(p.domain) === activeDomain),
+    [projects, activeDomain],
+  );
+
+  const domainCounts = useMemo(() => {
+    const counts: Record<AssetDomain, number> = {
+      character: 0,
+      scene: 0,
+      prop: 0,
+      ui: 0,
+      vfx: 0,
+    };
+    for (const project of projects) {
+      counts[normalizeAssetDomain(project.domain)] += 1;
+    }
+    return counts;
+  }, [projects]);
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
   useEffect(() => {
-    if (!projects.some((p) => p.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0]?.id ?? null);
+    if (isDebugMode()) {
+      debugLog("app", "mounted", {
+        workspaceId: active.id,
+        selectedProjectId,
+        activeDomain,
+      });
+    }
+  }, [active.id, selectedProjectId, activeDomain]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`amt:${active.id}:domain`, activeDomain);
+    } catch {
+      /* ignore */
+    }
+  }, [active.id, activeDomain]);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    try {
+      sessionStorage.setItem(`amt:${active.id}:projectId`, selectedProjectId);
+    } catch {
+      /* ignore */
+    }
+  }, [active.id, selectedProjectId]);
+
+  useEffect(() => {
+    const currentId = selectedProjectIdRef.current;
+    if (currentId && projectBelongsToDomain(currentId, activeDomain)) return;
+
+    const nextId =
+      projects.find((p) => normalizeAssetDomain(p.domain) === activeDomain)?.id ?? null;
+    debugLog("domain", "sync selection", { currentId, nextId, activeDomain });
+    if (currentId !== nextId) {
+      setSelectedProjectId(nextId);
       setSelectedFile(null);
     }
-  }, [projects, selectedProjectId]);
+  }, [activeDomain, projects, projectBelongsToDomain]);
 
   useEffect(() => {
     void fetchShortcuts().then(setShortcuts).catch(() => setShortcuts(DEFAULT_SHORTCUTS));
   }, []);
 
-  const reloadProjectFiles = useCallback(async (generation?: number) => {
-    if (!selectedProjectId) return;
-    if (!projects.some((p) => p.id === selectedProjectId)) return;
-    const gen = generation ?? projectLoadGeneration.current;
-    try {
-      const [treeRes, assetsRes] = await Promise.all([
-        fetchProjectTree(selectedProjectId, side),
-        fetchProjectAssets(selectedProjectId, side),
-      ]);
-      if (gen !== projectLoadGeneration.current) return;
+  const loadProjectData = useCallback(
+    async (projectId: string, loadSide: ProjectSide, generation: number) => {
+      const isStale = () =>
+        generation !== projectLoadGeneration.current ||
+        selectedProjectIdRef.current !== projectId ||
+        sideRef.current !== loadSide;
 
-      setProjectRoot(treeRes.root);
-      setTree(treeRes.tree);
-      setAssets(assetsRes.assets);
-      setProjectPathWarning(treeRes.warning ?? assetsRes.warning ?? null);
+      debugLog("project.load", "start", { projectId, loadSide, generation });
 
-      if (side === "concept") {
-        const tagRes = await fetchConceptTags(selectedProjectId);
-        if (gen !== projectLoadGeneration.current) return;
-        setConceptTags(tagRes.tags);
-        setTextureTags({});
-        if (tagRes.warning) setProjectPathWarning(tagRes.warning);
-      } else {
-        const tagRes = await fetchTextureTags(selectedProjectId);
-        if (gen !== projectLoadGeneration.current) return;
-        setTextureTags(tagRes.tags);
+      try {
+        const [treeRes, assetsRes] = await Promise.all([
+          fetchProjectTree(projectId, loadSide),
+          fetchProjectAssets(projectId, loadSide),
+        ]);
+        if (isStale()) {
+          debugLog("project.load", "stale after tree/assets", { projectId, generation });
+          return;
+        }
+
+        setProjectRoot(treeRes.root);
+        setTree(treeRes.tree);
+        setAssets(assetsRes.assets);
+        setProjectPathWarning(treeRes.warning ?? assetsRes.warning ?? null);
+
+        if (treeRes.missing || assetsRes.missing) {
+          debugLog("project.load", "missing directory", {
+            projectId,
+            root: treeRes.root,
+            warning: treeRes.warning ?? assetsRes.warning,
+          });
+        }
+
+        if (loadSide === "concept") {
+          const tagRes = await fetchConceptTags(projectId);
+          if (isStale()) {
+            debugLog("project.load", "stale after concept tags", { projectId, generation });
+            return;
+          }
+          setConceptTags(tagRes.tags);
+          setTextureTags({});
+          if (tagRes.warning) setProjectPathWarning(tagRes.warning);
+        } else {
+          const tagRes = await fetchTextureTags(projectId);
+          if (isStale()) {
+            debugLog("project.load", "stale after texture tags", { projectId, generation });
+            return;
+          }
+          setTextureTags(tagRes.tags);
+          setConceptTags({});
+          if (tagRes.warning) setProjectPathWarning(tagRes.warning);
+        }
+
+        setViewProjectKey(`${projectId}-${loadSide}`);
+        debugLog("project.load", "done", {
+          projectId,
+          loadSide,
+          generation,
+          assetCount: assetsRes.assets.length,
+        });
+      } catch (error) {
+        if (isStale()) {
+          debugLog("project.load", "stale error ignored", { projectId, generation });
+          return;
+        }
+        debugLog("project.load", "error", { projectId, generation, error: String(error) });
+        setTree(null);
+        setAssets([]);
+        setProjectRoot(null);
         setConceptTags({});
-        if (tagRes.warning) setProjectPathWarning(tagRes.warning);
+        setTextureTags({});
+        setViewProjectKey(null);
+        setProjectPathWarning(formatApiError(error));
+        throw error;
       }
-    } catch (error) {
-      if (gen !== projectLoadGeneration.current) return;
-      setProjectRoot(null);
-      setTree(null);
-      setAssets([]);
-      setConceptTags({});
-      setTextureTags({});
-      setSelectedFile(null);
-      setProjectPathWarning(String(error));
-      throw error;
-    }
-  }, [selectedProjectId, side, projects]);
+    },
+    [],
+  );
+
+  const reloadProjectFiles = useCallback(
+    async (generation?: number) => {
+      const projectId = selectedProjectIdRef.current;
+      const loadSide = sideRef.current;
+      const domain = activeDomainRef.current;
+      if (!projectId || !projectBelongsToDomain(projectId, domain)) return;
+
+      const gen = generation ?? ++projectLoadGeneration.current;
+      setLoadingProject(true);
+      try {
+        await loadProjectData(projectId, loadSide, gen);
+      } finally {
+        if (gen === projectLoadGeneration.current) {
+          setLoadingProject(false);
+        }
+      }
+    },
+    [loadProjectData, projectBelongsToDomain],
+  );
 
   const fileManager = useFileManager({
     projectRoot,
@@ -157,32 +341,41 @@ export default function App({ workspace, onRefresh }: AppProps) {
   notifyRef.current = fileManager.notify;
 
   useEffect(() => {
-    if (!selectedProjectId) return;
-    if (!projects.some((p) => p.id === selectedProjectId)) return;
-
     const generation = ++projectLoadGeneration.current;
+    const projectId = selectedProjectId;
+    const loadSide = side;
+
+    debugLog("project.load", "effect", { projectId, loadSide, generation, activeDomain });
+
+    const belongs =
+      projectId !== null &&
+      projects.some(
+        (p) => p.id === projectId && normalizeAssetDomain(p.domain) === activeDomain,
+      );
+
+    if (!belongs) {
+      clearProjectView();
+      setLoadingProject(false);
+      return;
+    }
+
     setSelectedFile(null);
     setShowMaterialLab(false);
-    setTree(null);
-    setAssets([]);
-    setProjectRoot(null);
-    setConceptTags({});
-    setTextureTags({});
-    setProjectPathWarning(null);
-    clearThreeLoaderCache();
+    setViewProjectKey(null);
     setLoadingProject(true);
 
-    reloadProjectFiles(generation)
+    void loadProjectData(projectId, loadSide, generation)
       .catch((error) => {
         if (generation !== projectLoadGeneration.current) return;
-        notifyRef.current(String(error), "error");
+        if (selectedProjectIdRef.current !== projectId) return;
+        notifyRef.current(formatApiError(error), "error");
       })
       .finally(() => {
         if (generation === projectLoadGeneration.current) {
           setLoadingProject(false);
         }
       });
-  }, [selectedProjectId, side, reloadProjectFiles, projects]);
+  }, [selectedProjectId, side, activeDomain, projects, clearProjectView, loadProjectData]);
 
   const lastAutoLinkedKeyRef = useRef("");
 
@@ -195,11 +388,6 @@ export default function App({ workspace, onRefresh }: AppProps) {
     const names = linked.map((p) => p.displayName).join("、");
     notifyRef.current(`已自动关联 ${linked.length} 个项目：${names}`);
   }, [workspace.autoLinked]);
-
-  useEffect(() => {
-    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId)) return;
-    if (projects[0]) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
 
   const handleSaveAll = useCallback(
     async (silent = false) => {
@@ -415,7 +603,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
     conceptFolderName: string;
     blenderProjectName: string;
   }) => {
-    const project = await createProject(input);
+    const project = await createProject({ ...input, domain: activeDomain });
     await onRefresh();
     setSelectedProjectId(project.id);
     setShowNewProject(false);
@@ -457,7 +645,10 @@ export default function App({ workspace, onRefresh }: AppProps) {
     await deleteProject(deletingProject.id, deleteFolders);
     const remaining = projects.filter((p) => p.id !== deletingProject.id);
     if (selectedProjectId === deletingProject.id) {
-      setSelectedProjectId(remaining[0]?.id ?? null);
+      const remainingInDomain = remaining.filter(
+        (p) => normalizeAssetDomain(p.domain) === activeDomain,
+      );
+      setSelectedProjectId(remainingInDomain[0]?.id ?? null);
       setSelectedFile(null);
     }
     setDeletingProject(null);
@@ -486,10 +677,16 @@ export default function App({ workspace, onRefresh }: AppProps) {
       <div className={`app-body ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
         <ProjectSidebar
           collapsed={sidebarCollapsed}
-          projects={projects}
+          activeDomain={activeDomain}
+          domainCounts={domainCounts}
+          projects={domainProjects}
           selectedId={selectedProjectId}
           onToggle={() => setSidebarCollapsed((v) => !v)}
-          onSelect={setSelectedProjectId}
+          onDomainChange={setActiveDomain}
+          onSelect={(id) => {
+            debugLog("project", "select", { from: selectedProjectId, to: id, activeDomain });
+            setSelectedProjectId(id);
+          }}
           onDelete={setDeletingProject}
           onNewProject={() => setShowNewProject(true)}
         />
@@ -507,6 +704,10 @@ export default function App({ workspace, onRefresh }: AppProps) {
                   >
                     ☰
                   </button>
+                  <span className="domain-crumb">
+                    {ASSET_DOMAIN_LABELS[normalizeAssetDomain(selectedProject.domain)]}
+                  </span>
+                  <span className="crumb-sep">/</span>
                   <h1>{selectedProject.displayName}</h1>
                   <span className="stage-badge">{selectedProject.stage}</span>
                 </div>
@@ -558,10 +759,15 @@ export default function App({ workspace, onRefresh }: AppProps) {
                 onOpenMaterialLab={() => setShowMaterialLab(true)}
               />
 
-              {loadingProject ? (
-                <div className="panel-loading">正在扫描项目文件...</div>
-              ) : (
-                <div className={`content-grid ${galleryCollapsed ? "is-gallery-hidden" : ""}`}>
+              <div className="content-area">
+                {loadingProject && (
+                  <div className="project-load-overlay" role="status">
+                    正在扫描项目文件…
+                  </div>
+                )}
+                <div
+                  className={`content-grid ${galleryCollapsed ? "is-gallery-hidden" : ""} ${loadingProject ? "is-loading-dim" : ""}`}
+                >
                   <section className="panel">
                     <h3>文件树</h3>
                     <ExternalImportZone
@@ -578,6 +784,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
                       }
                     >
                     <FileTree
+                      key={`tree-${selectedProjectId}-${side}`}
                       node={tree}
                       projectRoot={projectRoot}
                       selectedPath={selectedFile?.path}
@@ -609,6 +816,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
 
                   {!galleryCollapsed && (
                     <AssetGalleryPanel
+                      key={`gallery-${selectedProjectId}-${side}`}
                       assets={assets}
                       selectedFile={selectedFile}
                       selectedPath={selectedFile?.path}
@@ -621,7 +829,10 @@ export default function App({ workspace, onRefresh }: AppProps) {
                       textureTags={side === "blender" ? textureTags : undefined}
                       markEnabled={side === "concept"}
                       textureMarkEnabled={side === "blender"}
-                      suspendThumbnails={loadingProject}
+                      suspendThumbnails={
+                        loadingProject ||
+                        viewProjectKey !== `${selectedProjectId}-${side}`
+                      }
                       onHide={() => setGalleryCollapsed(true)}
                       onSelect={setSelectedFile}
                       onContextMenu={(e, node) => {
@@ -677,7 +888,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
                     </div>
                   </section>
                 </div>
-              )}
+              </div>
             </>
           ) : (
             <div className="empty-state">
@@ -710,6 +921,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
 
       {showNewProject && (
         <NewProjectModal
+          domain={activeDomain}
           onClose={() => setShowNewProject(false)}
           onCreate={handleCreateProject}
         />

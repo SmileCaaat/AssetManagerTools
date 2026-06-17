@@ -7,7 +7,9 @@ import { fileURLToPath } from "url";
 import {
   createProjectLink,
   findProject,
+  hasActiveWorkspace,
   loadConfig,
+  persistConfigIfNeeded,
   saveConfig,
   updateActiveWorkspace,
 } from "./config.js";
@@ -32,10 +34,11 @@ import {
 } from "./scanner.js";
 import { openInExplorer } from "./shell.js";
 import { isPathInsideRoot } from "./pathSecurity.js";
-import type { OpenFolderTarget, ProjectLink, ProjectSide } from "./types.js";
+import type { MasterWorkspace, OpenFolderTarget, ProjectLink, ProjectSide } from "./types.js";
 import { createMasterWorkspace } from "./workspaceCreator.js";
 import { isDuplicateWorkspace, openMasterWorkspace } from "./workspaceLinker.js";
-import { repairProjectLinks, resolveProjectPathAccessible, resolveProjectRootWithStatus } from "./projectPaths.js";
+import { repairProjectLinks, resolveProjectPathAccessible, resolveProjectRootWithStatus, getAllAccessibleRoots } from "./projectPaths.js";
+import { debugLog, isDebugMode } from "./debugLog.js";
 import { emptyProjectTree, missingProjectWarning } from "./projectRootHelpers.js";
 import {
   loadConceptTags,
@@ -81,7 +84,25 @@ const upload = multer({
   limits: { fileSize: 512 * 1024 * 1024 },
 });
 
+function buildEmptyWorkspaceResponse(autoLinked: ProjectLink[] = []) {
+  return {
+    activeWorkspaceId: "",
+    workspaces: [] as MasterWorkspace[],
+    active: null,
+    unlinked: { conceptOnly: [] as string[], blenderOnly: [] as string[] },
+    suggestions: [] as ProjectLink[],
+    autoLinked,
+  };
+}
+
 function buildWorkspacePayload(state: Awaited<ReturnType<typeof loadConfig>>) {
+  if (!hasActiveWorkspace(state)) {
+    return {
+      activeWorkspaceId: "",
+      workspaces: state.workspaces,
+      active: null,
+    };
+  }
   const active = getActiveWorkspace(state);
   return {
     activeWorkspaceId: state.activeWorkspaceId,
@@ -98,6 +119,9 @@ async function syncActiveWorkspaceProjects(state: Awaited<ReturnType<typeof load
   state: Awaited<ReturnType<typeof loadConfig>>;
   autoLinked: ProjectLink[];
 }> {
+  if (!hasActiveWorkspace(state)) {
+    return { state, autoLinked: [] };
+  }
   const active = getActiveWorkspace(state);
   const { projects, added } = await autoLinkWorkspaceProjects(active);
   if (added.length === 0) {
@@ -116,6 +140,9 @@ async function buildWorkspaceResponse(
   state: Awaited<ReturnType<typeof loadConfig>>,
   autoLinked: ProjectLink[] = [],
 ) {
+  if (!hasActiveWorkspace(state)) {
+    return buildEmptyWorkspaceResponse(autoLinked);
+  }
   const active = getActiveWorkspace(state);
   const unlinked = await discoverUnlinkedProjects(active);
   const suggestions = await suggestProjectLinks(active);
@@ -133,6 +160,10 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/workspace", async (_req, res) => {
   let state = await loadConfig();
+  if (!hasActiveWorkspace(state)) {
+    res.json(await buildWorkspaceResponse(state));
+    return;
+  }
   const { state: syncedState, autoLinked } = await syncActiveWorkspaceProjects(state);
   state = syncedState;
   ({ state } = await repairActiveWorkspace(state));
@@ -273,6 +304,7 @@ app.post("/api/projects", async (req, res) => {
       conceptFolderName?: string;
       meshFolderName?: string;
       blenderProjectName: string;
+      domain?: string;
     };
     const conceptFolderName = body.conceptFolderName || body.meshFolderName;
 
@@ -285,7 +317,12 @@ app.post("/api/projects", async (req, res) => {
 
     const state = await loadConfig();
     const active = getActiveWorkspace(state);
-    const link = createProjectLink(body.displayName, conceptFolderName, body.blenderProjectName);
+    const link = createProjectLink(
+      body.displayName,
+      conceptFolderName,
+      body.blenderProjectName,
+      body.domain,
+    );
 
     if (active.projects.some((p) => p.id === link.id)) {
       res.status(409).json({ error: "Project with same id already exists" });
@@ -306,10 +343,11 @@ app.post("/api/projects", async (req, res) => {
 
 app.post("/api/projects/link", async (req, res) => {
   try {
-    const { displayName, conceptPath, blenderPath } = req.body as {
+    const { displayName, conceptPath, blenderPath, domain } = req.body as {
       displayName: string;
       conceptPath: string;
       blenderPath: string;
+      domain?: string;
     };
 
     if (!displayName || !conceptPath || !blenderPath) {
@@ -320,7 +358,7 @@ app.post("/api/projects/link", async (req, res) => {
     const state = await loadConfig();
     const active = getActiveWorkspace(state);
     const blenderName = blenderPath.replace(/^projects\//, "");
-    const link = createProjectLink(displayName, conceptPath, blenderName);
+    const link = createProjectLink(displayName, conceptPath, blenderName, domain);
 
     if (active.projects.some((p) => p.id === link.id)) {
       res.status(409).json({ error: "Project with same id already exists" });
@@ -388,6 +426,9 @@ async function repairActiveWorkspace(state: Awaited<ReturnType<typeof loadConfig
   state: Awaited<ReturnType<typeof loadConfig>>;
   repaired: ProjectLink[];
 }> {
+  if (!hasActiveWorkspace(state)) {
+    return { state, repaired: [] };
+  }
   const active = getActiveWorkspace(state);
   const { workspace, repaired } = await repairProjectLinks(active);
   if (repaired.length === 0) {
@@ -400,14 +441,34 @@ async function repairActiveWorkspace(state: Awaited<ReturnType<typeof loadConfig
 }
 
 app.get("/api/projects/:id/tree", async (req, res) => {
+  const started = Date.now();
+  const projectId = req.params.id;
+  const side = (req.query.side as ProjectSide) || "concept";
+  debugLog("project.tree", "request", { projectId, side });
   try {
-    const side = (req.query.side as ProjectSide) || "concept";
     let state = await loadConfig();
+    if (!hasActiveWorkspace(state)) {
+      debugLog("project.tree", "no active workspace", { projectId, side });
+      res.status(503).json({ error: "Active workspace not found" });
+      return;
+    }
     ({ state } = await repairActiveWorkspace(state));
     const active = getActiveWorkspace(state);
-    const project = findProject(state, req.params.id);
+    debugLog("project.tree", "workspace", {
+      projectId,
+      workspaceId: active.id,
+      workspaceName: active.name,
+      conceptRoot: active.conceptRoot,
+    });
+    const project = findProject(state, projectId);
     const { root, exists } = await resolveProjectRootWithStatus(active, project, side);
     if (!exists) {
+      debugLog("project.tree", "missing", {
+        projectId,
+        side,
+        root,
+        ms: Date.now() - started,
+      });
       res.json({
         root,
         tree: emptyProjectTree(root),
@@ -417,21 +478,47 @@ app.get("/api/projects/:id/tree", async (req, res) => {
       return;
     }
     const tree = await buildFileTree(root, path.basename(root));
+    debugLog("project.tree", "ok", {
+      projectId,
+      side,
+      root,
+      ms: Date.now() - started,
+    });
     res.json({ root, tree: tree ?? emptyProjectTree(root) });
   } catch (error) {
+    debugLog("project.tree", "error", {
+      projectId,
+      side,
+      ms: Date.now() - started,
+      error: String(error),
+    });
     res.status(404).json({ error: String(error) });
   }
 });
 
 app.get("/api/projects/:id/assets", async (req, res) => {
+  const started = Date.now();
+  const projectId = req.params.id;
+  const side = (req.query.side as ProjectSide) || "concept";
+  debugLog("project.assets", "request", { projectId, side });
   try {
-    const side = (req.query.side as ProjectSide) || "concept";
     let state = await loadConfig();
+    if (!hasActiveWorkspace(state)) {
+      debugLog("project.assets", "no active workspace", { projectId, side });
+      res.status(503).json({ error: "Active workspace not found" });
+      return;
+    }
     ({ state } = await repairActiveWorkspace(state));
     const active = getActiveWorkspace(state);
-    const project = findProject(state, req.params.id);
+    const project = findProject(state, projectId);
     const { root, exists } = await resolveProjectRootWithStatus(active, project, side);
     if (!exists) {
+      debugLog("project.assets", "missing", {
+        projectId,
+        side,
+        root,
+        ms: Date.now() - started,
+      });
       res.json({
         root,
         assets: [],
@@ -441,8 +528,21 @@ app.get("/api/projects/:id/assets", async (req, res) => {
       return;
     }
     const assets = await collectPreviewableFiles(root);
+    debugLog("project.assets", "ok", {
+      projectId,
+      side,
+      root,
+      count: assets.length,
+      ms: Date.now() - started,
+    });
     res.json({ root, assets });
   } catch (error) {
+    debugLog("project.assets", "error", {
+      projectId,
+      side,
+      ms: Date.now() - started,
+      error: String(error),
+    });
     res.status(404).json({ error: String(error) });
   }
 });
@@ -769,7 +869,7 @@ app.get("/api/files", async (req, res) => {
     }
 
     const state = await loadConfig();
-    const allowedRoots = getAllAllowedRoots(state);
+    const allowedRoots = await getAllAccessibleRoots(state);
     const resolved = path.resolve(filePath);
 
     const insideAllowed = allowedRoots.some((root) => isPathInsideRoot(resolved, root));
@@ -799,6 +899,10 @@ if (fs.existsSync(clientDist)) {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await persistConfigIfNeeded();
   console.log(`Asset Manager running at http://localhost:${PORT}`);
+  if (isDebugMode()) {
+    console.log("[DEBUG] Server debug logging enabled (DEBUG=1)");
+  }
 });

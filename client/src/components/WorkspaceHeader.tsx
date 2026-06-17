@@ -4,7 +4,7 @@ import { openWorkspaceFolder } from "../api";
 import { ExternalResourceLinksMenu } from "./ExternalResourceLinksMenu";
 
 interface WorkspaceHeaderProps {
-  workspace: WorkspaceResponse;
+  workspace: WorkspaceResponse & { active: NonNullable<WorkspaceResponse["active"]> };
   onCreateWorkspace: () => void;
   onOpenWorkspace: () => void;
   onSwitchWorkspace: (workspaceId: string) => void;

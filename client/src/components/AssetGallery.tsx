@@ -89,7 +89,14 @@ export function AssetGallery({
                 suspendThumbnails ? (
                   <div className="model-placeholder">…</div>
                 ) : (
-                  <img src={fileUrl(asset.path)} alt={asset.name} loading="lazy" />
+                  <img
+                    src={fileUrl(asset.path)}
+                    alt={asset.name}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                    }}
+                  />
                 )
               ) : isModelFile(asset) ? (
                 <div className="model-placeholder">3D</div>

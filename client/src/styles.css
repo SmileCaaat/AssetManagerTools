@@ -35,6 +35,27 @@ code {
   font-size: 0.85rem;
 }
 
+.no-workspace-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.no-workspace-screen h1 {
+  margin: 8px 0 0;
+  font-size: 1.4rem;
+}
+
+.no-workspace-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 .loading-screen {
   min-height: 100vh;
   display: grid;
@@ -362,6 +383,90 @@ code {
 .sidebar.is-collapsed {
   align-items: center;
   padding: 8px 0;
+}
+
+.domain-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.domain-tab {
+  flex: 1 1 calc(33.33% - 4px);
+  min-width: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.domain-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.domain-tab.active {
+  color: var(--text);
+  background: var(--bg);
+  border-bottom-color: var(--bg);
+  font-weight: 600;
+}
+
+.domain-tab.is-disabled,
+.domain-tab:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.domain-tab-count {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.domain-soon-hint,
+.domain-empty {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.domain-empty p {
+  margin: 0;
+}
+
+.modal-domain-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
+.domain-crumb {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.crumb-sep {
+  color: var(--text-muted);
+  margin: 0 4px;
 }
 
 .sidebar-rail-btn {
@@ -1354,6 +1459,32 @@ code {
 .asset-size {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.content-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-load-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 18, 0.72);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.content-grid.is-loading-dim {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .preview-empty,

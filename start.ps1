@@ -1,7 +1,20 @@
+param(
+    [switch]$Debug
+)
+
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 Set-Location $PSScriptRoot
+
+$debugOn = $Debug -or ($env:DEBUG -eq "1") -or ($env:DEBUG -eq "true")
+if ($debugOn) {
+    $env:DEBUG = "1"
+    $env:VITE_DEBUG = "1"
+    Write-Host "[DEBUG] Debug logging enabled (server + browser console)" -ForegroundColor Yellow
+    Write-Host "        Server: [DEBUG:project.*] in this window" -ForegroundColor DarkYellow
+    Write-Host "        Client: [AMT DEBUG:*] in browser DevTools console" -ForegroundColor DarkYellow
+}
 
 if (-not (Test-Path "AssetManager.lnk")) {
     try {
@@ -45,9 +58,15 @@ Write-Host "========================================"
 Write-Host "  资产管理器 启动中..."
 Write-Host "  前端: http://localhost:5173"
 Write-Host "  API:  http://localhost:3456"
+if ($debugOn) {
+    Write-Host "  模式: DEBUG"
+}
 Write-Host "========================================"
 Write-Host ""
 Write-Host "关闭此窗口将停止服务。"
+if (-not $debugOn) {
+    Write-Host "调试: .\start.ps1 -Debug  或  set DEBUG=1 后运行 start.bat"
+}
 Write-Host ""
 
 Start-Job {

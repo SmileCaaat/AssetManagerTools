@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+import type { AssetDomain } from "../config/assetDomains";
+import { ASSET_DOMAIN_LABELS } from "../config/assetDomains";
 import { deriveProjectNames } from "../utils/projectNaming";
 
 interface NewProjectModalProps {
+  domain: AssetDomain;
   onClose: () => void;
   onCreate: (input: {
     displayName: string;
@@ -10,7 +13,7 @@ interface NewProjectModalProps {
   }) => Promise<void>;
 }
 
-export function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
+export function NewProjectModal({ domain, onClose, onCreate }: NewProjectModalProps) {
   const [projectName, setProjectName] = useState("");
   const [chineseSuffix, setChineseSuffix] = useState("");
   const [customMode, setCustomMode] = useState(false);
@@ -83,6 +86,7 @@ export function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
         <p className="modal-desc">
           将在 ConceptWorkspace 和 BlenderWorkspace 同时创建目录并建立关联。概念侧为扁平目录（仅项目文件夹），生产侧保留标准子结构。
         </p>
+        <div className="modal-domain-badge">资产大类：{ASSET_DOMAIN_LABELS[domain]}</div>
 
         <form onSubmit={(e) => void handleSubmit(e)}>
           <label>

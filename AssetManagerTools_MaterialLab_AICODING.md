@@ -14,8 +14,9 @@
 
 ## 零、实现状态（同步仓库，请以此为准）
 
-> **最后更新：2026-06-18** · 仓库：`main` 分支。  
-> Unity 实机验收通过（Mushpig / Punchgob / stonemork）；**Slang 阶段 B 正式搁置**，维持 fallback HLSL 即可。
+> **最后更新：2026-06-17** · 仓库：`main` 分支。  
+> Unity 实机验收通过（Mushpig / Punchgob / stonemork）；**Slang 阶段 B 正式搁置**，维持 fallback HLSL 即可。  
+> 同期主线：**资产大类**（角色/场景）、**工作区配置并发修复**、**MetallicSmoothness 贴图标记**、**DEBUG 启动模式** 已合入。
 
 ### 总览
 
@@ -67,7 +68,8 @@ BlenderWorkspace/UnityAssets/
 
 **数据与 API**
 
-- `GET/PUT .../material-lab`、贴图槽匹配、Metallic+Roughness 合并、规范检查
+- `GET/PUT .../material-lab`、贴图槽匹配、Metallic+Roughness 合并 → `T_<Name>_MetallicSmoothness.png`（R=Metallic, A=Smoothness）、规范检查
+- 生产侧纹理标记类型含 **MetallicSmoothness**（按钮 **MetSmth**）
 
 **代码位置**
 
@@ -111,7 +113,7 @@ client/src/material-lab/
 
 - 管理 `ConceptWorkspace` 与 `BlenderWorkspace`
 - 概念侧资产标记：立绘、多视图、高模、低模
-- 生产侧贴图标记：`BaseColor`、`Normal`、`AO`、`Roughness`、`Metallic`、`Height`、`Emission` 等
+- 生产侧贴图标记：`BaseColor`、`Normal`、`AO`、`Roughness`、`Metallic`、`MetallicSmoothness`、`Height`、`Emission` 等
 - FBX 预览
 - 图片预览、镜像、分割、尺寸转换
 - 本地 Express API

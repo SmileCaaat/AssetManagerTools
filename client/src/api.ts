@@ -38,7 +38,10 @@ export function formatApiError(error: unknown): string {
   if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
     return "无法连接后端 API（http://localhost:3456）。请确认 start.bat / npm run dev 正在运行；若终端里 dev:client 已退出，请关闭窗口后重新启动。";
   }
-  return msg;
+  if (msg.includes("Project not found")) {
+    return "未找到该项目，请刷新工作区后重试。";
+  }
+  return msg.replace(/^Error:\s*/i, "");
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -101,6 +104,7 @@ export function createProject(input: {
   displayName: string;
   conceptFolderName: string;
   blenderProjectName: string;
+  domain?: string;
 }): Promise<ProjectLink> {
   return request<ProjectLink>("/api/projects", {
     method: "POST",

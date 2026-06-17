@@ -33,9 +33,22 @@ npm start
 
 关闭运行 `start.bat` / `start.ps1` 的终端窗口即可停止服务。
 
+### 调试模式
+
+排查项目切换、工作区加载等问题时可启用 DEBUG 日志：
+
+```powershell
+.\start.ps1 -Debug
+```
+
+或 `start.bat debug`（等价于设置 `DEBUG=1` 与 `VITE_DEBUG=1`）。
+
+- **服务端**：终端输出 `[DEBUG:project.*]`、`[DEBUG:config]` 等
+- **浏览器**：DevTools 控制台输出 `[AMT DEBUG:*]`
+
 ---
 
-## 功能概览 (v0.5)
+## 功能概览 (v0.6)
 
 > Material Lab 进度见 [AssetManagerTools_MaterialLab_AICODING.md](./AssetManagerTools_MaterialLab_AICODING.md) **「零、实现状态」**。Unity 实机 Toon 已验收；**Slang 阶段 B 已搁置**。
 
@@ -47,11 +60,23 @@ npm start
 
 从 GitHub 拉取当前分支更新；`package-lock.json` 变更时会自动 `npm install`。再运行 `start.bat` 启动。
 
+默认经代理 `http://127.0.0.1:7897` 访问 GitHub；可设置 `HTTP_PROXY` / `HTTPS_PROXY`，或使用 `.\update.ps1 -SkipProxy` 跳过。
+
+**推送**（本机有未提交改动时先 commit）：
+
+```powershell
+$proxy = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } elseif ($env:HTTP_PROXY) { $env:HTTP_PROXY } else { "http://127.0.0.1:7897" }
+git -c "http.proxy=$proxy" -c "https.proxy=$proxy" push origin main
+```
+
 ### 工作区
 
+- **首次使用**：无内置默认工作区；启动后需 **打开已有工作区** 或 **新建空白工作区**（`data/workspace.json` 仅存本机配置，不随仓库分发）
 - **多总工作区**：下拉切换、打开已有工作区、新建空白工作区
 - **自动关联项目**：打开 / 切换 / 刷新工作区时，按名称自动匹配概念与生产目录并写入 `workspace.json`
 - **路径自愈**：项目登记名与磁盘文件夹不一致时（如 `Punchgob庞哥布` ↔ `Punchgob`）自动纠正
+- **配置稳定性**：`workspace.json` 读写加锁 + 原子写入，避免并发请求清空活动工作区
+- **会话记忆**：刷新页面后恢复当前工作区、资产大类与选中项目（`sessionStorage`）
 - **路径选择**：浏览器目录选择器 + 系统文件夹对话框（无需手输路径）
 - **打开文件夹**：顶部菜单可打开根目录 / ConceptWorkspace / BlenderWorkspace
 - **保存 / 刷新**：顶部「保存」刷盘全部 JSON；「刷新」重新扫描当前项目；每 5 分钟自动保存
@@ -59,7 +84,8 @@ npm start
 
 ### 项目与文件
 
-- **逻辑项目**：概念侧与生产侧目录关联，支持概念 / 生产视图切换
+- **资产大类**：侧边栏按 **角色 / 场景 / 道具 / UI / VFX** 分组；每个大类下仍保留 **概念 / 生产** 双视图（当前 **角色、场景** 已开放；道具 / UI / VFX 为灰色预留）。项目 `domain` 字段写入 `workspace.json`，旧项目默认 **角色**，**不改磁盘路径**
+- **逻辑项目**：概念侧与生产侧目录关联，支持概念 / 生产视图切换；切换项目时带加载遮罩，避免显示上一项目残留目录
 - **文件树 + 画廊**：浏览、选中、预览可识别资产（图片、FBX、Blend）
 - **文件操作**：新建文件夹、重命名、复制、剪切、粘贴、删除
 - **导入**：工具栏或拖入外部文件到当前目录
@@ -83,7 +109,7 @@ npm start
 
 生产视图画廊提供纹理类型按钮，**一键重命名**为 `T_{项目名}_{类型}.{ext}`：
 
-`BaseColor` · `Roughness` · `Metallic` · `Normal` · `AO` · `Height` · `Edge` · `Detection` · `Alpha` · `Bump` · `Curvature` · `Emission`
+`BaseColor` · `Roughness` · `Metallic` · `Normal` · `AO` · `Height` · `Edge` · `Detection` · `Alpha` · `Bump` · `Curvature` · `Emission` · `MetallicSmoothness`（**MetSmth**，合并 Metallic+Roughness 后自动标记）
 
 原始贴图建议放在 `textures/source/`；标记元数据写入 `.asset-manager/blender_texture_tags.json`。
 

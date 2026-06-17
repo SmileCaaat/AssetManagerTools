@@ -124,3 +124,34 @@ export async function repairProjectLinks(workspace: MasterWorkspace): Promise<{
     repaired,
   };
 }
+
+/** Resolved on-disk project folders (after fuzzy name match). Used for file read ACL. */
+export async function collectAccessibleProjectRoots(
+  workspace: MasterWorkspace,
+): Promise<string[]> {
+  const roots = new Set<string>();
+  const conceptRoot = getConceptRoot(workspace);
+  const blenderRoot = getBlenderRoot(workspace);
+  roots.add(path.resolve(conceptRoot));
+  roots.add(path.resolve(blenderRoot));
+  roots.add(path.resolve(path.join(blenderRoot, "projects")));
+
+  for (const project of workspace.projects) {
+    roots.add(await resolveProjectPathAccessible(workspace, project, "concept"));
+    roots.add(await resolveProjectPathAccessible(workspace, project, "blender"));
+  }
+
+  return [...roots];
+}
+
+export async function getAllAccessibleRoots(state: {
+  workspaces: MasterWorkspace[];
+}): Promise<string[]> {
+  const roots = new Set<string>();
+  for (const workspace of state.workspaces) {
+    for (const root of await collectAccessibleProjectRoots(workspace)) {
+      roots.add(root);
+    }
+  }
+  return [...roots];
+}

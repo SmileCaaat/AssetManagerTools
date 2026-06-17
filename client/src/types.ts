@@ -28,6 +28,7 @@ export type TextureMapType =
   | "BaseColor"
   | "Roughness"
   | "Metallic"
+  | "MetallicSmoothness"
   | "Normal"
   | "AO"
   | "Height"
@@ -42,6 +43,7 @@ export const TEXTURE_MAP_TYPES: TextureMapType[] = [
   "BaseColor",
   "Roughness",
   "Metallic",
+  "MetallicSmoothness",
   "Normal",
   "AO",
   "Height",
@@ -57,6 +59,7 @@ export const TEXTURE_TYPE_LABELS: Record<TextureMapType, string> = {
   BaseColor: "BaseColor",
   Roughness: "Roughness",
   Metallic: "Metallic",
+  MetallicSmoothness: "MetSmth",
   Normal: "Normal",
   AO: "AO",
   Height: "Height",
@@ -72,6 +75,7 @@ export const TEXTURE_TYPE_HINTS: Record<TextureMapType, string> = {
   BaseColor: "基础色",
   Roughness: "粗糙度",
   Metallic: "金属度",
+  MetallicSmoothness: "金属+光滑度合并（R=Metallic, A=Smoothness）",
   Normal: "法线",
   AO: "环境光遮蔽",
   Height: "高度",
@@ -133,6 +137,8 @@ export interface ConceptTagsResponse {
 export interface ProjectLink {
   id: string;
   displayName: string;
+  /** Asset pipeline category: character, scene, prop, ui, vfx */
+  domain?: import("./config/assetDomains").AssetDomain;
   conceptPath: string;
   blenderPath: string;
   stage: ProjectStage;
@@ -171,7 +177,7 @@ export type OpenFolderTarget = "root" | "concept" | "blender";
 export interface WorkspaceResponse {
   activeWorkspaceId: string;
   workspaces: MasterWorkspace[];
-  active: ActiveWorkspace;
+  active: ActiveWorkspace | null;
   unlinked: { conceptOnly: string[]; blenderOnly: string[] };
   suggestions: ProjectLink[];
   autoLinked?: ProjectLink[];

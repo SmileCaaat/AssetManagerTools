@@ -7,6 +7,7 @@ export const TEXTURE_MAP_TYPES = [
   "BaseColor",
   "Roughness",
   "Metallic",
+  "MetallicSmoothness",
   "Normal",
   "AO",
   "Height",

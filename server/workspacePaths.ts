@@ -29,8 +29,12 @@ function addRoot(roots: Set<string>, candidate?: string): void {
 export function collectWorkspaceRoots(workspace: MasterWorkspace): string[] {
   const roots = new Set<string>();
   addRoot(roots, workspace.rootPath);
-  addRoot(roots, getConceptRoot(workspace));
-  addRoot(roots, getBlenderRoot(workspace));
+  const conceptRoot = getConceptRoot(workspace);
+  const blenderRoot = getBlenderRoot(workspace);
+  addRoot(roots, conceptRoot);
+  addRoot(roots, blenderRoot);
+  // Allow any project folder under these trees (name may differ from config after fuzzy match)
+  addRoot(roots, path.join(blenderRoot, "projects"));
 
   for (const project of workspace.projects) {
     addRoot(roots, resolveProjectPath(workspace, project, "concept"));

@@ -2,6 +2,13 @@
 setlocal
 cd /d "%~dp0"
 
+if /i "%~1"=="debug" set DEBUG=1
+if /i "%~1"=="-debug" set DEBUG=1
+if defined DEBUG (
+  set VITE_DEBUG=1
+  echo [DEBUG] Debug logging enabled
+)
+
 where node >nul 2>&1
 if errorlevel 1 goto no_node
 
@@ -40,9 +47,11 @@ echo ========================================
 echo   Asset Manager
 echo   Frontend: http://localhost:5173
 echo   API:      http://localhost:3456
+if defined DEBUG echo   Mode:     DEBUG
 echo ========================================
 echo.
 echo Tip: Use AssetManager.lnk for custom icon launcher.
+if not defined DEBUG echo Debug: start.bat debug
 echo Close this window to stop the server.
 echo.
 start "" cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:5173"

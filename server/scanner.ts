@@ -80,6 +80,7 @@ export async function suggestProjectLinks(workspace: MasterWorkspace): Promise<P
       suggestions.push({
         id: normalizeId(conceptName) || normalizeId(best.name),
         displayName: best.name,
+        domain: "character",
         conceptPath: conceptName,
         blenderPath: `projects/${best.name}`,
         stage: "production",

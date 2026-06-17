@@ -99,7 +99,9 @@ export async function buildDefaultMaterialLabState(
   const ao = (await findByTagType(projectRoot, tags, "AO")) || "";
   const emission = (await findByTagType(projectRoot, tags, "Emission")) || "";
   const metallicSmoothness =
-    (await findMetallicSmoothnessByName(projectRoot, project.displayName)) || "";
+    (await findByTagType(projectRoot, tags, "MetallicSmoothness")) ||
+    (await findMetallicSmoothnessByName(projectRoot, project.displayName)) ||
+    "";
 
   const modelPath = await findExportModel(projectRoot, project.displayName);
   const projectName = sanitizePrefix(project.displayName) || project.id;

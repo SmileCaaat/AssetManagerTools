@@ -1,5 +1,5 @@
 import type { ConceptAssetRole, FileNode, TextureMapType } from "../types";
-import { ASSET_MARK_ROLES, CONCEPT_ROLE_LABELS, TEXTURE_MAP_TYPES, TEXTURE_TYPE_HINTS } from "../types";
+import { ASSET_MARK_ROLES, CONCEPT_ROLE_LABELS, TEXTURE_MAP_TYPES, TEXTURE_TYPE_HINTS, TEXTURE_TYPE_LABELS } from "../types";
 import { canMarkWithRole } from "../lib/assetMarking";
 import { canMarkTextureMap } from "../lib/textureMarking";
 import { AssetGallery } from "./AssetGallery";
@@ -77,7 +77,7 @@ export function AssetGalleryPanel({
                     onMarkTexture(selectedFile, type);
                   }}
                 >
-                  {type}
+                  {TEXTURE_TYPE_LABELS[type]}
                 </button>
               ))}
             </div>

@@ -1,11 +1,16 @@
 export type ProjectStage = "concept" | "production" | "done";
 
+export type { AssetDomain } from "./assetDomains.js";
+export { DEFAULT_ASSET_DOMAIN } from "./assetDomains.js";
+
 export const CONCEPT_WORKSPACE_FOLDER = "ConceptWorkspace";
 export const BLENDER_WORKSPACE_FOLDER = "BlenderWorkspace";
 
 export interface ProjectLink {
   id: string;
   displayName: string;
+  /** Asset pipeline category: character, scene, prop, ui, vfx */
+  domain: import("./assetDomains.js").AssetDomain;
   conceptPath: string;
   blenderPath: string;
   stage: ProjectStage;
