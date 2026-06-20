@@ -1119,6 +1119,7 @@ export default function App({ workspace, onRefresh }: AppProps) {
       {upscaleFile && (
         <ImageUpscaleModal
           file={upscaleFile}
+          images={assets.filter((a) => !a.isDirectory && isImageFile(a))}
           onClose={() => setUpscaleFile(null)}
           onExported={async () => {
             await reloadProjectFiles();

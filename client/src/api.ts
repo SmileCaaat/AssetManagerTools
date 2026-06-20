@@ -248,11 +248,12 @@ export function upscaleImage(
   filePath: string,
   scale: number,
   model?: string,
+  overwrite?: boolean,
 ): Promise<{ path: string; width: number; height: number; fileSize: number }> {
   return request("/api/images/upscale", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: filePath, scale, model }),
+    body: JSON.stringify({ path: filePath, scale, model, overwrite }),
   });
 }
 

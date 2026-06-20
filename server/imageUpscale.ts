@@ -105,8 +105,13 @@ export interface UpscaleInput {
   imagePath: string;
   scale: UpscaleScale;
   model?: string;
+  /** When true, replace the original file (preserving its extension) instead of writing {base}_HD.png. */
+  overwrite?: boolean;
   allowedRoots: string[];
 }
+
+// Image formats sharp can re-encode for overwrite-in-place.
+const SHARP_WRITABLE = new Set([".png", ".jpg", ".jpeg", ".webp", ".tiff", ".avif"]);
 
 export interface UpscaleResult {
   path: string;
@@ -140,8 +145,10 @@ export async function upscaleImage(input: UpscaleInput): Promise<UpscaleResult> 
   await fsp.access(resolved);
 
   const dir = path.dirname(resolved);
-  const base = path.basename(resolved, path.extname(resolved));
-  const outPath = path.join(dir, `${base}_HD.png`);
+  const ext = path.extname(resolved);
+  const base = path.basename(resolved, ext);
+  // The engine always writes PNG; use a work file, then place it per the save mode.
+  const workPath = path.join(dir, `${base}_HD.png`);
 
   // Always run the engine at the model's native scale, then resample to the
   // requested scale below. Mismatched -s produces corrupted (sliced) output.
@@ -150,7 +157,7 @@ export async function upscaleImage(input: UpscaleInput): Promise<UpscaleResult> 
 
   const args = [
     "-i", resolved,
-    "-o", outPath,
+    "-o", workPath,
     "-s", String(nativeScale),
     "-n", model,
     "-f", "png",
@@ -158,7 +165,7 @@ export async function upscaleImage(input: UpscaleInput): Promise<UpscaleResult> 
 
   await runExe(status.exePath, args, status.modelsDir, path.dirname(status.exePath));
 
-  if (!fs.existsSync(outPath)) {
+  if (!fs.existsSync(workPath)) {
     throw new Error("高清化失败：引擎未生成输出文件，请检查模型与显卡驱动。");
   }
 
@@ -166,17 +173,36 @@ export async function upscaleImage(input: UpscaleInput): Promise<UpscaleResult> 
   if (scale !== nativeScale && inputMeta.width && inputMeta.height) {
     const targetW = Math.round(inputMeta.width * scale);
     const targetH = Math.round(inputMeta.height * scale);
-    const buf = await sharp(outPath)
+    const buf = await sharp(workPath)
       .resize(targetW, targetH, { fit: "fill", kernel: "lanczos3" })
       .png()
       .toBuffer();
-    await fsp.writeFile(outPath, buf);
+    await fsp.writeFile(workPath, buf);
   }
 
-  const meta = await sharp(outPath).metadata();
-  const stat = await fsp.stat(outPath);
+  let finalPath = workPath;
+  if (input.overwrite) {
+    // Replace the original file. Re-encode to its own format when sharp supports it,
+    // otherwise fall back to a sibling .png and drop the original.
+    if (SHARP_WRITABLE.has(ext.toLowerCase())) {
+      // toFile picks the encoder from the target extension (e.g. .jpg -> jpeg).
+      await sharp(workPath).toFile(resolved);
+      await fsp.rm(workPath, { force: true });
+      finalPath = resolved;
+    } else {
+      const pngTarget = path.join(dir, `${base}.png`);
+      await fsp.rename(workPath, pngTarget);
+      if (path.resolve(pngTarget) !== path.resolve(resolved)) {
+        await fsp.rm(resolved, { force: true });
+      }
+      finalPath = pngTarget;
+    }
+  }
+
+  const meta = await sharp(finalPath).metadata();
+  const stat = await fsp.stat(finalPath);
   return {
-    path: outPath,
+    path: finalPath,
     width: meta.width ?? 0,
     height: meta.height ?? 0,
     fileSize: stat.size,

@@ -1084,12 +1084,18 @@ code {
   border-left: 3px solid #f87171;
 }
 
+.tree-file.tag-blend-project {
+  background: rgba(129, 140, 248, 0.1);
+  border-left: 3px solid #818cf8;
+}
+
 .tree-file.tag-key-art.selected,
 .tree-file.tag-multi-view.selected,
 .tree-file.tag-high-poly.selected,
 .tree-file.tag-low-poly.selected,
 .tree-file.tag-skeleton.selected,
-.tree-file.tag-sm-model.selected {
+.tree-file.tag-sm-model.selected,
+.tree-file.tag-blend-project.selected {
   background: var(--accent-soft);
 }
 
@@ -1133,6 +1139,11 @@ code {
   background: rgba(248, 113, 113, 0.16);
 }
 
+.tree-file.tag-blend-project .tag-badge {
+  color: #a5b4fc;
+  background: rgba(129, 140, 248, 0.16);
+}
+
 .asset-card.tag-key-art {
   border-color: #a78bfa;
   box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.35);
@@ -1161,6 +1172,11 @@ code {
 .asset-card.tag-sm-model {
   border-color: #f87171;
   box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35);
+}
+
+.asset-card.tag-blend-project {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.35);
 }
 
 .asset-tag-badge {
@@ -1201,6 +1217,11 @@ code {
 .asset-card.tag-sm-model .asset-tag-badge {
   background: rgba(248, 113, 113, 0.92);
   color: #450a0a;
+}
+
+.asset-card.tag-blend-project .asset-tag-badge {
+  background: rgba(129, 140, 248, 0.92);
+  color: #1e1b4b;
 }
 
 .asset-thumb {
@@ -2482,6 +2503,83 @@ code {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Batch upscale: selection list + result grid */
+.upscale-select-list {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: var(--bg);
+}
+
+.upscale-select-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.upscale-select-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upscale-batch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  align-content: start;
+  width: 100%;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.upscale-batch-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--bg-elevated);
+}
+
+.upscale-batch-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.upscale-batch-item.status-done {
+  border-color: #34d399;
+}
+
+.upscale-batch-item.status-error {
+  border-color: #e55;
+}
+
+.upscale-batch-item.status-pending {
+  border-color: var(--accent);
+}
+
+.upscale-batch-name {
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upscale-batch-status {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .upscale-path {

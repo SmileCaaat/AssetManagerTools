@@ -793,10 +793,11 @@ app.get("/api/images/upscale/status", (_req, res) => {
 
 app.post("/api/images/upscale", async (req, res) => {
   try {
-    const { path: imagePath, scale, model } = req.body as {
+    const { path: imagePath, scale, model, overwrite } = req.body as {
       path: string;
       scale: number;
       model?: string;
+      overwrite?: boolean;
     };
     if (!imagePath) {
       res.status(400).json({ error: "path is required" });
@@ -812,6 +813,7 @@ app.post("/api/images/upscale", async (req, res) => {
       imagePath,
       scale: scale as (typeof UPSCALE_SCALES)[number],
       model,
+      overwrite: Boolean(overwrite),
       allowedRoots: getAllowedRoots(state),
     });
     res.json(result);
