@@ -1089,13 +1089,19 @@ code {
   border-left: 3px solid #818cf8;
 }
 
+.tree-file.tag-state-machine-anim {
+  background: rgba(251, 146, 60, 0.1);
+  border-left: 3px solid #fb923c;
+}
+
 .tree-file.tag-key-art.selected,
 .tree-file.tag-multi-view.selected,
 .tree-file.tag-high-poly.selected,
 .tree-file.tag-low-poly.selected,
 .tree-file.tag-skeleton.selected,
 .tree-file.tag-sm-model.selected,
-.tree-file.tag-blend-project.selected {
+.tree-file.tag-blend-project.selected,
+.tree-file.tag-state-machine-anim.selected {
   background: var(--accent-soft);
 }
 
@@ -1144,6 +1150,11 @@ code {
   background: rgba(129, 140, 248, 0.16);
 }
 
+.tree-file.tag-state-machine-anim .tag-badge {
+  color: #fdba74;
+  background: rgba(251, 146, 60, 0.16);
+}
+
 .asset-card.tag-key-art {
   border-color: #a78bfa;
   box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.35);
@@ -1177,6 +1188,11 @@ code {
 .asset-card.tag-blend-project {
   border-color: #818cf8;
   box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.35);
+}
+
+.asset-card.tag-state-machine-anim {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.35);
 }
 
 .asset-tag-badge {
@@ -1222,6 +1238,11 @@ code {
 .asset-card.tag-blend-project .asset-tag-badge {
   background: rgba(129, 140, 248, 0.92);
   color: #1e1b4b;
+}
+
+.asset-card.tag-state-machine-anim .asset-tag-badge {
+  background: rgba(251, 146, 60, 0.92);
+  color: #431407;
 }
 
 .asset-thumb {

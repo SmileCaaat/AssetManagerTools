@@ -120,13 +120,14 @@ export function textureTypeTagClass(): string {
   return "tag-texture-map";
 }
 
-export type ProductionAssetRole = "lowPoly" | "skeleton" | "smModel" | "blendProject";
+export type ProductionAssetRole = "lowPoly" | "skeleton" | "smModel" | "blendProject" | "stateMachineAnim";
 
 export const PRODUCTION_ASSET_ROLES: ProductionAssetRole[] = [
   "lowPoly",
   "skeleton",
   "smModel",
   "blendProject",
+  "stateMachineAnim",
 ];
 
 export const PRODUCTION_ASSET_LABELS: Record<ProductionAssetRole, string> = {
@@ -134,6 +135,7 @@ export const PRODUCTION_ASSET_LABELS: Record<ProductionAssetRole, string> = {
   skeleton: "骨骼",
   smModel: "SM模型",
   blendProject: "工程",
+  stateMachineAnim: "状态机动画",
 };
 
 export const PRODUCTION_ASSET_HINTS: Record<ProductionAssetRole, string> = {
@@ -141,6 +143,7 @@ export const PRODUCTION_ASSET_HINTS: Record<ProductionAssetRole, string> = {
   skeleton: "已绑定骨骼或骨架结果",
   smModel: "Static Mesh / 引擎用静态模型",
   blendProject: "Blender 工程文件，重命名为项目名.blend",
+  stateMachineAnim: "状态机动画 FBX，重命名为 {项目名}_Anim.fbx",
 };
 
 export function productionAssetTagClass(role?: ProductionAssetRole): string {
@@ -148,6 +151,7 @@ export function productionAssetTagClass(role?: ProductionAssetRole): string {
   if (role === "skeleton") return "tag-skeleton";
   if (role === "smModel") return "tag-sm-model";
   if (role === "blendProject") return "tag-blend-project";
+  if (role === "stateMachineAnim") return "tag-state-machine-anim";
   return "";
 }
 

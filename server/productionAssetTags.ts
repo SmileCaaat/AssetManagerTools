@@ -3,7 +3,7 @@ import path from "path";
 import { renamePath } from "./fileOperations.js";
 import { isPreviewableModel, isBlendFile } from "./scanner.js";
 
-export const PRODUCTION_ASSET_ROLES = ["lowPoly", "skeleton", "smModel", "blendProject"] as const;
+export const PRODUCTION_ASSET_ROLES = ["lowPoly", "skeleton", "smModel", "blendProject", "stateMachineAnim"] as const;
 
 export type ProductionAssetRole = (typeof PRODUCTION_ASSET_ROLES)[number];
 
@@ -93,7 +93,9 @@ function buildProductionAssetName(
         ? `${prefix}_Skeleton`
         : role === "blendProject"
           ? prefix
-          : `SM_${prefix}`;
+          : role === "stateMachineAnim"
+            ? `${prefix}_Anim`
+            : `SM_${prefix}`;
   const primary = `${stem}${ext}`;
   if (!existingNames.has(primary)) return primary;
 
