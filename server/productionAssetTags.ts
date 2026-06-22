@@ -93,9 +93,7 @@ function buildProductionAssetName(
         ? `${prefix}_Skeleton`
         : role === "blendProject"
           ? prefix
-          : role === "stateMachineAnim"
-            ? `${prefix}_Anim`
-            : `SM_${prefix}`;
+          : `SM_${prefix}`;
   const primary = `${stem}${ext}`;
   if (!existingNames.has(primary)) return primary;
 
@@ -163,10 +161,18 @@ export async function markProductionAsset(input: {
   existingNames.delete(basename);
 
   const tags = await loadProductionAssetTags(projectRoot);
-  removeTagsByRole(tags, role);
+  // stateMachineAnim allows multiple files (one per clip); don't wipe existing tags.
+  if (role !== "stateMachineAnim") removeTagsByRole(tags, role);
   removeTagByRelativePath(tags, oldRelative);
 
-  const newName = buildProductionAssetName(prefix, role, ext, existingNames);
+  // stateMachineAnim: prepend project prefix to the original filename (idle.fbx → Lumi_idle.fbx).
+  let newName: string;
+  if (role === "stateMachineAnim") {
+    const origBasename = path.basename(resolved);
+    newName = origBasename.startsWith(`${prefix}_`) ? origBasename : `${prefix}_${origBasename}`;
+  } else {
+    newName = buildProductionAssetName(prefix, role, ext, existingNames);
+  }
   const destPath = path.join(parentDir, newName);
   const renamedPath =
     path.resolve(resolved) === path.resolve(destPath)
